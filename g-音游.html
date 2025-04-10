@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthwave Rhythm Racer (External Audio)</title> <!-- Title updated for clarity -->
+    <!-- 引入复古字体 (示例: Google Fonts - 这是外部链接, 如果完全不允许外部链接, 需要下载字体并Base64嵌入, 更复杂) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CSS 代码开始 --- */
+
+        :root {
+            --neon-pink: #ff00ff;
+            --neon-purple: #aa00ff;
+            --neon-blue: #00ffff;
+            --neon-green: #00ffaa;
+            --dark-bg: #1a001a;
+            --glow-strength: 15px;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: var(--dark-bg);
+            color: var(--neon-blue);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; overflow: hidden; position: relative;
+        }
+
+        body::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple), var(--neon-blue), var(--neon-green), var(--neon-pink));
+            background-size: 400% 400%; opacity: 0.6; z-index: -1;
+            animation: gradientBG 20s ease infinite;
+        }
+
+        body::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(to right, rgba(0, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px; z-index: -1; opacity: 0.5;
+        }
+
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        #game-container {
+            position: relative; width: 90vw; max-width: 600px; height: 80vh; max-height: 800px;
+            background: rgba(0, 0, 20, 0.5); border: 3px solid var(--neon-blue);
+            box-shadow: 0 0 var(--glow-strength) var(--neon-blue), inset 0 0 var(--glow-strength) var(--neon-blue);
+            border-radius: 10px; display: flex; flex-direction: column;
+            overflow: hidden; perspective: 800px;
+        }
+
+        #score-display, #combo-display {
+            position: absolute; top: 15px; font-family: 'Press Start 2P', cursive; font-size: 1.2em;
+            color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green);
+            z-index: 10;
+        }
+        #score-display { left: 20px; } #combo-display { right: 20px; }
+
+        #game-area {
+            flex-grow: 1; position: relative; display: flex; justify-content: space-around;
+            padding: 0 2%; border-bottom: 2px dashed rgba(0, 255, 255, 0.3);
+        }
+
+        .note-lane { width: 22%; height: 100%; position: relative; }
+
+        .target-line {
+            position: absolute; bottom: 14%; left: 0; right: 0; height: 5px;
+            background: linear-gradient(to right, transparent, var(--neon-pink), var(--neon-blue), var(--neon-pink), transparent);
+            box-shadow: 0 0 10px var(--neon-pink), 0 0 15px var(--neon-blue); z-index: 5;
+        }
+
+        .hit-buttons {
+            position: absolute; bottom: 2%; left: 0; right: 0; height: 10%;
+            display: flex; justify-content: space-around; align-items: center; padding: 0 2%;
+        }
+
+        .hit-button {
+            width: 22%; height: 90%; background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--neon-pink); color: var(--neon-pink);
+            font-family: 'Orbitron', sans-serif; font-size: 1.5em; font-weight: bold;
+            border-radius: 5px; cursor: pointer; outline: none;
+            text-shadow: 0 0 5px var(--neon-pink);
+            box-shadow: 0 0 8px var(--neon-pink), inset 0 0 8px rgba(255, 0, 255, 0.5);
+            transition: all 0.05s ease; display: flex; justify-content: center; align-items: center;
+        }
+        .hit-button:hover { background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 12px var(--neon-pink), 0 0 20px var(--neon-pink), inset 0 0 10px rgba(255, 0, 255, 0.7); }
+        .hit-button.active { background: var(--neon-pink); color: var(--dark-bg); box-shadow: 0 0 15px var(--neon-pink), 0 0 25px var(--neon-pink), inset 0 0 5px rgba(0, 0, 0, 0.5); transform: scale(0.95); text-shadow: none; }
+
+        #button-1, #button-4 { border-color: var(--neon-pink); color: var(--neon-pink); text-shadow: 0 0 5px var(--neon-pink); box-shadow: 0 0 8px var(--neon-pink), inset 0 0 8px rgba(255, 0, 255, 0.5); }
+        #button-2, #button-3 { border-color: var(--neon-blue); color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue), inset 0 0 8px rgba(0, 255, 255, 0.5); }
+        #button-1.active { background: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink), 0 0 25px var(--neon-pink); color: var(--dark-bg); }
+        #button-2.active { background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue), 0 0 25px var(--neon-blue); color: var(--dark-bg); }
+        #button-3.active { background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue), 0 0 25px var(--neon-blue); color: var(--dark-bg); }
+        #button-4.active { background: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink), 0 0 25px var(--neon-pink); color: var(--dark-bg); }
+
+        .note {
+            position: absolute; width: 90%; left: 5%; height: 20px;
+            background: linear-gradient(to right, var(--neon-purple), var(--neon-blue));
+            border-radius: 3px; box-shadow: 0 0 8px var(--neon-blue), 0 0 12px var(--neon-purple);
+            top: -20px; z-index: 3;
+        }
+        .note[data-lane="1"], .note[data-lane="4"] { background: linear-gradient(to right, var(--neon-pink), var(--neon-purple)); box-shadow: 0 0 8px var(--neon-pink), 0 0 12px var(--neon-purple); }
+        .note[data-lane="2"], .note[data-lane="3"] { background: linear-gradient(to right, var(--neon-blue), var(--neon-green)); box-shadow: 0 0 8px var(--neon-blue), 0 0 12px var(--neon-green); }
+
+        .hit-effect-zone { position: absolute; bottom: 2%; left: 0; right: 0; height: 10%; display: flex; justify-content: space-around; padding: 0 2%; pointer-events: none; z-index: 4; }
+        .hit-effect { width: 22%; height: 100%; position: relative; overflow: hidden; }
+        .hit-effect::after { content: ''; position: absolute; bottom: 0; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.8) 0%, transparent 70%); opacity: 0; transform: translateY(50%); }
+        .hit-effect.flash::after { animation: hit-flash 0.3s ease-out forwards; }
+        #hit-effect-1.flash::after, #hit-effect-4.flash::after { background: radial-gradient(circle at 50% 100%, rgba(255, 0, 255, 0.8) 0%, transparent 70%); }
+        #hit-effect-2.flash::after, #hit-effect-3.flash::after { background: radial-gradient(circle at 50% 100%, rgba(0, 255, 255, 0.8) 0%, transparent 70%); }
+
+        @keyframes hit-flash { 0% { opacity: 1; transform: translateY(50%) scale(0.5); } 50% { opacity: 0.8; transform: translateY(-20%) scale(1.2); } 100% { opacity: 0; transform: translateY(-50%) scale(1); } }
+
+        #score-popup-container { position: absolute; bottom: 16%; left: 0; right: 0; height: 10%; pointer-events: none; z-index: 15; }
+        .score-popup { position: absolute; font-family: 'Press Start 2P', cursive; font-size: 1em; font-weight: bold; opacity: 0; animation: score-popup-anim 0.8s ease-out forwards; white-space: nowrap; }
+        .score-popup.perfect { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
+        .score-popup.good { color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
+        .score-popup.miss { color: red; text-shadow: 0 0 5px red; }
+
+        @keyframes score-popup-anim { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 50% { opacity: 1; transform: translateY(-30px) scale(1.2); } 100% { opacity: 0; transform: translateY(-60px) scale(1); } }
+
+        #glitch-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            /* --- 使用一个 1x1 的透明像素作为默认值，强烈建议替换为你自己的噪点图 Base64 --- */
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+            background-repeat: repeat; opacity: 0; z-index: 20; pointer-events: none; animation: none;
+        }
+        #glitch-overlay.active { animation: glitch-anim 0.2s linear 2; }
+        #game-container.glitch-shake { animation: shake-anim 0.1s linear 2; }
+
+        @keyframes glitch-anim { 0%, 100% { opacity: 0; } 25% { opacity: 0.3; background-position: 10px 5px; } 50% { opacity: 0.6; background-position: -5px -10px; } 75% { opacity: 0.4; background-position: 0px 10px; } }
+        @keyframes shake-anim { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px) rotate(-0.5deg); } 50% { transform: translateX(5px) rotate(0.5deg); } 75% { transform: translateX(-3px) rotate(-0.3deg); } }
+
+        #message-display {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; background: rgba(0, 0, 0, 0.7); padding: 30px;
+            border-radius: 10px; border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 15px var(--neon-purple); z-index: 100; color: var(--neon-blue);
+        }
+        #message-display p { font-family: 'Press Start 2P', cursive; font-size: 0.8em; margin-top: 20px; color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
+
+        #start-button, #restart-button {
+            padding: 15px 30px; font-family: 'Orbitron', sans-serif; font-size: 1.5em; font-weight: bold;
+            color: var(--dark-bg); background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue));
+            border: none; border-radius: 5px; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-blue);
+            transition: all 0.2s ease; margin-top: 10px;
+        }
+        #start-button:hover, #restart-button:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--neon-pink), 0 0 30px var(--neon-blue), 0 0 40px var(--neon-green); }
+        #start-button:active, #restart-button:active { transform: scale(0.98); }
+
+        /* --- CSS 代码结束 --- */
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="glitch-overlay"></div>
+        <div id="score-display">SCORE: <span id="score">0</span></div>
+        <div id="combo-display">COMBO: <span id="combo">0</span></div>
+        <div id="game-area">
+            <div class="note-lane" id="lane-1"></div> <div class="note-lane" id="lane-2"></div>
+            <div class="note-lane" id="lane-3"></div> <div class="note-lane" id="lane-4"></div>
+            <div class="target-line"></div>
+            <div class="hit-effect-zone">
+                <div class="hit-effect" id="hit-effect-1"></div> <div class="hit-effect" id="hit-effect-2"></div>
+                <div class="hit-effect" id="hit-effect-3"></div> <div class="hit-effect" id="hit-effect-4"></div>
+            </div>
+            <div class="hit-buttons">
+                <button class="hit-button" id="button-1" data-lane="1">D</button> <button class="hit-button" id="button-2" data-lane="2">F</button>
+                <button class="hit-button" id="button-3" data-lane="3">J</button> <button class="hit-button" id="button-4" data-lane="4">K</button>
+            </div>
+        </div>
+        <div id="message-display">
+            <button id="start-button">START RIDE</button>
+            <p>Press D, F, J, K to hit the notes!</p>
+        </div>
+        <div id="score-popup-container"></div>
+    </div>
+
+    <!-- 使用外部链接加载音频 -->
+    <audio id="bg-music" src="https://opengameart.org/sites/default/files/rythm_flow_0.mp3" loop preload="auto"></audio> <!-- Added preload="auto" for potentially faster start -->
+    <audio id="hit-sound" src="https://opengameart.org/sites/default/files/hit01.wav" preload="auto"></audio>
+    <audio id="miss-sound" src="https://opengameart.org/sites/default/files/lose%20sound%202%20-%201_0.wav" preload="auto"></audio>
+
+    <script>
+        // --- JavaScript 代码开始 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const gameContainer = document.getElementById('game-container');
+            const gameArea = document.getElementById('game-area');
+            const scoreDisplay = document.getElementById('score');
+            const comboDisplay = document.getElementById('combo');
+            const messageDisplay = document.getElementById('message-display');
+            const startButton = document.getElementById('start-button');
+            const hitButtons = document.querySelectorAll('.hit-button');
+            const targetLine = document.querySelector('.target-line');
+            const scorePopupContainer = document.getElementById('score-popup-container');
+            const glitchOverlay = document.getElementById('glitch-overlay');
+
+            // --- Audio Elements ---
+            const bgMusic = document.getElementById('bg-music');
+            const hitSound = document.getElementById('hit-sound');
+            const missSound = document.getElementById('miss-sound');
+
+            // --- Game State ---
+            let score = 0;
+            let combo = 0;
+            let isPlaying = false;
+            let gameLoopInterval = null;
+            let noteSpeed = 300; // pixels per second
+            let activeNotes = [];
+            let noteSpawnTimeout = null;
+            let currentNoteIndex = 0;
+            let startTime = 0;
+            const noteHeight = 20;
+            let targetLinePosition = 0;
+
+            // --- Timing Windows (in milliseconds) ---
+            const perfectTime = 50;
+            const goodTime = 100;
+            const missTime = 150;
+
+            // --- Song Data (Based on rythm_flow_0.mp3 - FULL SONG) ---
+            // !!! This is an example chart - TESTING AND ADJUSTMENT IS HIGHLY RECOMMENDED !!!
+            const songData = {
+                bpm: 130, // Estimated BPM for reference
+                notes: [
+                    // Intro beat starts around 2s (0:00 - 0:16)
+                    { time: 2.00, lane: 1 }, { time: 2.46, lane: 2 }, { time: 2.92, lane: 1 }, { time: 3.38, lane: 2 },
+                    { time: 3.84, lane: 1 }, { time: 4.30, lane: 2 }, { time: 4.76, lane: 1 }, { time: 4.99, lane: 3 }, { time: 5.22, lane: 2 },
+                    { time: 5.68, lane: 1 }, { time: 5.91, lane: 4 }, { time: 6.14, lane: 2 }, { time: 6.37, lane: 3 }, { time: 6.60, lane: 1 },
+                    { time: 7.06, lane: 2 }, { time: 7.29, lane: 4 }, { time: 7.52, lane: 1 }, { time: 7.75, lane: 3 }, { time: 7.98, lane: 2 },
+                    { time: 8.44, lane: 1 }, { time: 8.90, lane: 2 }, { time: 9.13, lane: 4 }, { time: 9.36, lane: 1 }, { time: 9.59, lane: 3 }, { time: 9.82, lane: 2 },
+                    { time: 10.28, lane: 1 }, { time: 10.74, lane: 2 }, { time: 10.97, lane: 3 }, { time: 11.20, lane: 1 }, { time: 11.66, lane: 2 }, { time: 11.89, lane: 4 },
+                    { time: 12.12, lane: 1 }, { time: 12.35, lane: 3 }, { time: 12.58, lane: 2 }, { time: 13.04, lane: 1 }, { time: 13.27, lane: 4 }, { time: 13.50, lane: 2 },
+                    { time: 13.96, lane: 1 }, { time: 14.19, lane: 3 }, { time: 14.42, lane: 2 }, { time: 14.88, lane: 1 }, { time: 15.11, lane: 4 }, { time: 15.34, lane: 2 },
+                    { time: 15.80, lane: 1 }, { time: 16.03, lane: 3 }, { time: 16.26, lane: 2 },
+
+                    // Section change feel (0:16 - 0:30)
+                    { time: 16.72, lane: 1 }, { time: 16.72, lane: 4 }, { time: 17.18, lane: 2 }, { time: 17.64, lane: 1 }, { time: 17.64, lane: 3 }, { time: 18.10, lane: 2 },
+                    { time: 18.56, lane: 1 }, { time: 18.56, lane: 4 }, { time: 19.02, lane: 2 }, { time: 19.48, lane: 1 }, { time: 19.48, lane: 3 }, { time: 19.94, lane: 2 },
+                    { time: 20.40, lane: 1 }, { time: 20.40, lane: 4 }, { time: 20.86, lane: 2 }, { time: 21.32, lane: 1 }, { time: 21.32, lane: 3 }, { time: 21.78, lane: 2 },
+                    { time: 22.24, lane: 1 }, { time: 22.24, lane: 4 }, { time: 22.70, lane: 2 }, { time: 23.16, lane: 1 }, { time: 23.16, lane: 3 }, { time: 23.62, lane: 2 },
+
+                    // More melodic part again (0:30 - 0:48)
+                    { time: 24.08, lane: 1 }, { time: 24.31, lane: 4 }, { time: 24.54, lane: 2 }, { time: 24.77, lane: 3 }, { time: 25.00, lane: 1 },
+                    { time: 25.46, lane: 2 }, { time: 25.69, lane: 4 }, { time: 25.92, lane: 1 }, { time: 26.15, lane: 3 }, { time: 26.38, lane: 2 },
+                    { time: 26.84, lane: 1 }, { time: 27.30, lane: 2 }, { time: 27.53, lane: 4 }, { time: 27.76, lane: 1 }, { time: 27.99, lane: 3 }, { time: 28.22, lane: 2 },
+                    { time: 28.68, lane: 1 }, { time: 29.14, lane: 2 }, { time: 29.37, lane: 3 }, { time: 29.60, lane: 1 }, { time: 30.06, lane: 2 }, { time: 30.29, lane: 4 }, // Added synth hit
+                    { time: 30.52, lane: 1 }, { time: 30.75, lane: 3 }, { time: 30.98, lane: 2 }, { time: 31.44, lane: 1 }, { time: 31.67, lane: 4 }, { time: 31.90, lane: 2 },
+                    { time: 32.36, lane: 1 }, { time: 32.59, lane: 3 }, { time: 32.82, lane: 2 }, { time: 33.28, lane: 1 }, { time: 33.51, lane: 4 }, { time: 33.74, lane: 2 },
+
+                    // Section repeats with chords (0:48 - 1:05)
+                    { time: 34.20, lane: 1 }, { time: 34.20, lane: 4 }, { time: 34.66, lane: 2 }, { time: 35.12, lane: 1 }, { time: 35.12, lane: 3 }, { time: 35.58, lane: 2 },
+                    { time: 36.04, lane: 1 }, { time: 36.04, lane: 4 }, { time: 36.50, lane: 2 }, { time: 36.96, lane: 1 }, { time: 36.96, lane: 3 }, { time: 37.42, lane: 2 },
+                    { time: 37.88, lane: 1 }, { time: 37.88, lane: 4 }, { time: 38.34, lane: 2 }, { time: 38.80, lane: 1 }, { time: 38.80, lane: 3 }, { time: 39.26, lane: 2 },
+                    { time: 39.72, lane: 1 }, { time: 39.72, lane: 4 }, { time: 40.18, lane: 2 }, { time: 40.64, lane: 1 }, { time: 40.64, lane: 3 }, { time: 41.10, lane: 2 },
+                    { time: 41.56, lane: 1 }, { time: 41.56, lane: 4 }, { time: 42.02, lane: 2 }, { time: 42.48, lane: 1 }, { time: 42.48, lane: 3 }, { time: 42.94, lane: 2 },
+                    { time: 43.40, lane: 1 }, { time: 43.40, lane: 4 }, { time: 43.86, lane: 2 }, { time: 44.32, lane: 1 }, { time: 44.32, lane: 3 }, { time: 44.78, lane: 2 },
+                    { time: 45.24, lane: 1 }, { time: 45.24, lane: 4 }, { time: 45.70, lane: 2 }, { time: 46.16, lane: 1 }, { time: 46.16, lane: 3 }, { time: 46.62, lane: 2 },
+                    { time: 47.08, lane: 1 }, { time: 47.08, lane: 4 }, { time: 47.54, lane: 2 }, { time: 48.00, lane: 1 }, { time: 48.00, lane: 3 }, { time: 48.46, lane: 2 },
+
+                    // Bridge / Breakdown section (1:05 - 1:21) - Quieter, focus on synth
+                    { time: 48.92, lane: 4 }, // Synth note
+                    { time: 49.84, lane: 3 }, // Synth note
+                    { time: 50.76, lane: 4 }, // Synth note
+                    { time: 51.68, lane: 3 }, // Synth note
+                    { time: 52.60, lane: 4 }, { time: 52.83, lane: 1 }, // Synth + quiet kick
+                    { time: 53.52, lane: 3 }, { time: 53.75, lane: 2 }, // Synth + quiet snare
+                    { time: 54.44, lane: 4 }, { time: 54.67, lane: 1 },
+                    { time: 55.36, lane: 3 }, { time: 55.59, lane: 2 },
+                    { time: 56.28, lane: 4 }, // Higher synth
+                    { time: 56.74, lane: 1 },
+                    { time: 57.20, lane: 3 }, // Higher synth
+                    { time: 57.66, lane: 2 },
+                    { time: 58.12, lane: 4 }, // Higher synth
+                    { time: 58.58, lane: 1 },
+                    { time: 59.04, lane: 3 }, // Higher synth
+                    { time: 59.50, lane: 2 },
+                    { time: 59.96, lane: 1 }, { time: 59.96, lane: 4 }, // Build up starts
+                    { time: 60.42, lane: 2 }, { time: 60.65, lane: 3 },
+                    { time: 60.88, lane: 1 }, { time: 61.11, lane: 4 },
+                    { time: 61.34, lane: 2 }, { time: 61.57, lane: 3 },
+                    { time: 61.80, lane: 1 }, { time: 62.03, lane: 4 },
+                    { time: 62.26, lane: 2 }, { time: 62.49, lane: 3 },
+                    { time: 62.72, lane: 1 }, { time: 62.95, lane: 4 },
+                    { time: 63.18, lane: 2 }, { time: 63.41, lane: 3 }, // Fill
+                    { time: 63.64, lane: 1 }, { time: 63.87, lane: 2 }, { time: 64.10, lane: 3 }, { time: 64.33, lane: 4 }, // Faster fill
+
+                    // Final Section - Return of main theme, more intense (1:21 - End)
+                    { time: 64.56, lane: 1 }, { time: 64.56, lane: 4 }, // Back to chords
+                    { time: 65.02, lane: 2 },
+                    { time: 65.48, lane: 1 }, { time: 65.48, lane: 3 },
+                    { time: 65.94, lane: 2 },
+                    { time: 66.40, lane: 1 }, { time: 66.40, lane: 4 },
+                    { time: 66.86, lane: 2 },
+                    { time: 67.32, lane: 1 }, { time: 67.32, lane: 3 },
+                    { time: 67.78, lane: 2 },
+                    // Repeat with slight variation / added notes
+                    { time: 68.24, lane: 1 }, { time: 68.24, lane: 4 }, { time: 68.47, lane: 3 }, // Added quick note
+                    { time: 68.70, lane: 2 },
+                    { time: 69.16, lane: 1 }, { time: 69.16, lane: 3 }, { time: 69.39, lane: 4 }, // Added quick note
+                    { time: 69.62, lane: 2 },
+                    { time: 70.08, lane: 1 }, { time: 70.08, lane: 4 }, { time: 70.31, lane: 3 },
+                    { time: 70.54, lane: 2 },
+                    { time: 71.00, lane: 1 }, { time: 71.00, lane: 3 }, { time: 71.23, lane: 4 },
+                    { time: 71.46, lane: 2 },
+                    // Repeat main melodic part
+                    { time: 71.92, lane: 1 }, { time: 72.15, lane: 4 }, { time: 72.38, lane: 2 }, { time: 72.61, lane: 3 }, { time: 72.84, lane: 1 },
+                    { time: 73.30, lane: 2 }, { time: 73.53, lane: 4 }, { time: 73.76, lane: 1 }, { time: 73.99, lane: 3 }, { time: 74.22, lane: 2 },
+                    { time: 74.68, lane: 1 }, { time: 75.14, lane: 2 }, { time: 75.37, lane: 4 }, { time: 75.60, lane: 1 }, { time: 75.83, lane: 3 }, { time: 76.06, lane: 2 },
+                    { time: 76.52, lane: 1 }, { time: 76.98, lane: 2 }, { time: 77.21, lane: 3 }, { time: 77.44, lane: 1 }, { time: 77.90, lane: 2 }, { time: 78.13, lane: 4 },
+                    // Fade out / Ending
+                    { time: 78.36, lane: 1 }, { time: 78.59, lane: 3 }, { time: 78.82, lane: 2 },
+                    { time: 79.28, lane: 1 }, { time: 79.51, lane: 4 }, { time: 79.74, lane: 2 },
+                    { time: 80.20, lane: 1 }, // Final kick
+                    { time: 80.66, lane: 2 }, // Final snare
+                    { time: 81.12, lane: 1 }, { time: 81.12, lane: 4 } // Final chord fade
+                    // End of song approx 1:22
+                ]
+            };
+
+
+
+            // --- Functions ---
+            function updateScore(points) { score += points; scoreDisplay.textContent = score; }
+            function updateCombo(isHit) { combo = isHit ? combo + 1 : 0; comboDisplay.textContent = combo; }
+
+            // --- MODIFIED playSound Function ---
+            function playSound(soundElement) {
+                // Removed the check for 'data:' URI
+                // We assume preload="auto" and the browser handle loading for short external sounds.
+                // If the sound hasn't loaded, play() might fail silently or log an error via the promise.
+                if (!soundElement || !soundElement.currentSrc) {
+                    console.warn("Attempted to play sound with invalid element or no source:", soundElement ? soundElement.id : 'null');
+                    return;
+                }
+                const sound = soundElement.cloneNode(); // Clone to allow rapid playback
+                sound.volume = 0.7;
+                sound.play().catch(e => console.error(`Sound play failed for ${soundElement.id}:`, e)); // Keep catch for errors
+            }
+
+            function triggerHitEffect(lane) {
+                const effectElement = document.getElementById(`hit-effect-${lane}`);
+                if (effectElement) { effectElement.classList.remove('flash'); void effectElement.offsetWidth; effectElement.classList.add('flash'); }
+            }
+            function triggerMissEffect() {
+                glitchOverlay.classList.add('active'); gameContainer.classList.add('glitch-shake');
+                playSound(missSound);
+                setTimeout(() => { glitchOverlay.classList.remove('active'); gameContainer.classList.remove('glitch-shake'); }, 200);
+                updateCombo(false);
+            }
+            function showScorePopup(text, type, lane) {
+                const popup = document.createElement('div');
+                popup.textContent = text; popup.classList.add('score-popup', type);
+                const lanePercent = (parseInt(lane) - 0.5) / 4 * 100;
+                popup.style.left = `calc(${lanePercent}% - 30px)`; // Adjust position calculation if needed
+                scorePopupContainer.appendChild(popup);
+                setTimeout(() => { if (scorePopupContainer.contains(popup)) scorePopupContainer.removeChild(popup); }, 800);
+            }
+            function createNoteElement(noteData) {
+                const noteElement = document.createElement('div');
+                noteElement.classList.add('note'); noteElement.dataset.lane = noteData.lane; noteElement.dataset.time = noteData.time;
+                noteElement.style.top = `-${noteHeight}px`;
+                const laneElement = document.getElementById(`lane-${noteData.lane}`);
+                if (laneElement) {
+                    laneElement.appendChild(noteElement);
+                    activeNotes.push({ element: noteElement, lane: noteData.lane, targetTime: noteData.time * 1000 });
+                } else { console.error(`Lane element ${noteData.lane} not found!`); }
+            }
+             function calculateSpawnTimeOffset() {
+                 // Ensure targetLinePosition is valid before calculation
+                 if (targetLinePosition <= 0 || noteSpeed <= 0) {
+                     // Fallback: Estimate based on game area height if layout wasn't ready
+                     const estimatedTargetY = gameArea.clientHeight * 0.86; // 100% - 14% (target line bottom)
+                     console.warn("Using estimated target position for spawn offset.");
+                     return (estimatedTargetY / (noteSpeed || 300)) * 1000; // Use default speed if noteSpeed is 0
+                 }
+                 return (targetLinePosition / noteSpeed) * 1000;
+            }
+            function scheduleNextNote() {
+                if (!isPlaying || currentNoteIndex >= songData.notes.length) return;
+                const noteData = songData.notes[currentNoteIndex];
+                const currentTime = performance.now() - startTime;
+                const timeToTarget = (noteData.time * 1000) - currentTime;
+                const spawnOffset = calculateSpawnTimeOffset(); // Calculate offset each time
+
+                // If spawnOffset calculation failed (returned large/infinite value), use a safe default
+                if (!isFinite(spawnOffset) || spawnOffset <= 0) {
+                    console.error("Invalid spawn offset calculated, using default.");
+                    spawnOffset = 2000; // Default to 2 seconds before hit time
+                }
+
+                const spawnDelay = timeToTarget - spawnOffset;
+
+                // Slightly more lenient skip check
+                if (spawnDelay < -200) { // Allow notes slightly past spawn point
+                    console.warn(`Note ${currentNoteIndex} skipped (spawnDelay: ${spawnDelay.toFixed(0)}ms).`);
+                    currentNoteIndex++;
+                    scheduleNextNote(); // Immediately schedule the next one
+                    return;
+                }
+
+                noteSpawnTimeout = setTimeout(() => {
+                    if (!isPlaying) return;
+                    createNoteElement(noteData);
+                    currentNoteIndex++;
+                    scheduleNextNote(); // Schedule the next note after creating the current one
+                }, Math.max(0, spawnDelay)); // Ensure delay is not negative
+            }
+            let lastFrameTime = 0;
+            function gameLoop(timestamp) {
+                if (!isPlaying) return;
+                if (!lastFrameTime) {
+                    lastFrameTime = timestamp; // Initialize lastFrameTime on the first frame
+                    gameLoopInterval = requestAnimationFrame(gameLoop); // Request next frame immediately
+                    return; // Skip calculations on the very first frame
+                }
+
+                const deltaTime = (timestamp - lastFrameTime) / 1000;
+                lastFrameTime = timestamp;
+
+                // Avoid huge jumps if tab was inactive
+                const cappedDeltaTime = Math.min(deltaTime, 0.1); // Cap delta time to e.g., 100ms (10fps)
+
+                const currentTime = performance.now() - startTime;
+
+                // Update note positions
+                for (let i = activeNotes.length - 1; i >= 0; i--) {
+                    const note = activeNotes[i];
+                    const noteElement = note.element;
+                    const currentTop = parseFloat(noteElement.style.top) || 0;
+                    const newTop = currentTop + noteSpeed * cappedDeltaTime; // Use capped delta time
+                    noteElement.style.top = `${newTop}px`;
+
+                    // Check for misses
+                    const missBoundary = targetLinePosition + missTime * (noteSpeed / 1000); // Use missTime for boundary
+                    if (newTop > missBoundary + noteHeight) { // Note completely passed the miss window
+                        triggerMissEffect();
+                        showScorePopup('MISS', 'miss', note.lane);
+                        noteElement.remove();
+                        activeNotes.splice(i, 1);
+                    }
+                }
+
+                // Check for game end condition
+                // Ensure all notes are processed AND some time has passed after the last note
+                 const allNotesSpawned = currentNoteIndex >= songData.notes.length;
+                 const noActiveNotes = activeNotes.length === 0;
+                 if (allNotesSpawned && noActiveNotes) {
+                     const lastNoteTargetTime = songData.notes.length > 0 ? songData.notes[songData.notes.length - 1].time * 1000 : 0;
+                     // Wait a bit after the last note's target time before ending
+                     if (currentTime > lastNoteTargetTime + 2500) { // Increased delay slightly
+                         endGame("Ride Complete!");
+                         return; // Stop the loop
+                     }
+                 }
+
+                gameLoopInterval = requestAnimationFrame(gameLoop); // Request the next frame
+            }
+            function handleInput(lane) {
+                if (!isPlaying || !targetLinePosition) return;
+                const currentTime = performance.now() - startTime;
+                let bestNoteIndex = -1;
+                let minTimeDiffToTargetLine = Infinity; // Check proximity to the line
+
+                const hitWindowTop = targetLinePosition - missTime * (noteSpeed / 1000);
+                const hitWindowBottom = targetLinePosition + missTime * (noteSpeed / 1000);
+
+                for (let i = 0; i < activeNotes.length; i++) {
+                    const note = activeNotes[i];
+                    if (note.lane === lane) {
+                        const noteTop = parseFloat(note.element.style.top);
+                        const noteBottom = noteTop + noteHeight;
+
+                        // Check if the note visually overlaps the hit window
+                        if (noteBottom > hitWindowTop && noteTop < hitWindowBottom) {
+                             // Calculate how close the note's center is to the target line
+                             const noteCenterY = noteTop + noteHeight / 2;
+                             const diffY = Math.abs(noteCenterY - targetLinePosition);
+
+                             // Prioritize the note closest to the target line
+                             if (diffY < minTimeDiffToTargetLine) {
+                                 minTimeDiffToTargetLine = diffY;
+                                 bestNoteIndex = i;
+                             }
+                        }
+                    }
+                }
+
+                if (bestNoteIndex !== -1) {
+                    const hitNote = activeNotes[bestNoteIndex];
+                    const timeDiff = currentTime - hitNote.targetTime; // Time difference relative to the note's ideal hit time
+
+                    let accuracy = 'miss';
+                    let scoreValue = 0;
+                    let popupText = 'MISS';
+
+                    if (Math.abs(timeDiff) <= perfectTime) {
+                        accuracy = 'perfect'; scoreValue = 100; popupText = 'PERFECT!';
+                    } else if (Math.abs(timeDiff) <= goodTime) {
+                        accuracy = 'good'; scoreValue = 50; popupText = 'GOOD';
+                    } else if (Math.abs(timeDiff) <= missTime) { // Within miss window but outside good
+                         accuracy = 'miss'; // Still counts as a hit to remove the note, but gives no points/combo
+                         popupText = 'BAD'; // Or 'LATE'/'EARLY' if you calculate sign of timeDiff
+                         scoreValue = 0; // Or maybe a small penalty/value
+                         updateCombo(false); // Break combo on bad hits
+                    }
+
+
+                    if (accuracy !== 'miss' || popupText === 'BAD') { // Process perfect, good, and bad hits
+                        if (accuracy !== 'miss') { // Only score/combo on perfect/good
+                             updateScore(scoreValue + combo);
+                             updateCombo(true);
+                             popupText += (combo > 1 ? ` x${combo}` : '');
+                             playSound(hitSound);
+                        } else {
+                            playSound(missSound); // Play miss sound for 'BAD' hits
+                        }
+
+                        showScorePopup(popupText, accuracy, lane);
+                        triggerHitEffect(lane);
+                        hitNote.element.remove();
+                        activeNotes.splice(bestNoteIndex, 1);
+                    } else {
+                         // This case should ideally not be reached if the loop found a note in the window,
+                         // but acts as a fallback if timing is way off.
+                         triggerMissEffect();
+                         showScorePopup('MISS', 'miss', lane);
+                    }
+
+                } else {
+                    // Optional: Penalize empty presses if desired
+                    // console.log("Empty press on lane", lane);
+                }
+            }
+
+            // --- MODIFIED startGame Function ---
+            function startGame() {
+                // Ensure targetLinePosition is calculated correctly
+                targetLinePosition = targetLine.offsetTop;
+                if (targetLinePosition <= 0) {
+                    console.error("FATAL: Cannot get target line position on start. Retrying layout calculation.");
+                    // Force reflow/recalc
+                    void gameContainer.offsetWidth;
+                    targetLinePosition = targetLine.offsetTop;
+                    if (targetLinePosition <= 0) {
+                         messageDisplay.innerHTML = "<p>Layout Error. Cannot start game.</p>";
+                         messageDisplay.style.display = 'block';
+                         return; // Stop if still invalid
+                    }
+                     console.log("Target line position recalculated:", targetLinePosition);
+                }
+
+                score = 0; combo = 0; currentNoteIndex = 0;
+                activeNotes.forEach(note => note.element.remove()); activeNotes = [];
+                updateScore(0); updateCombo(null); // Use null or false for reset
+                messageDisplay.style.display = 'none';
+                isPlaying = true;
+
+                if (noteSpawnTimeout) clearTimeout(noteSpawnTimeout);
+                cancelAnimationFrame(gameLoopInterval); // Ensure previous loop is stopped
+
+                bgMusic.currentTime = 0; // Reset music time
+
+                // --- Removed the 'data:' check ---
+                // Rely on the play() promise to handle loading/playback issues
+                if (!bgMusic.src && !bgMusic.currentSrc) { // Check if a src is set at all
+                     console.error("Background music source is not set!");
+                     messageDisplay.innerHTML = `<p>Error: No music file specified.</p><button id="restart-button">RETRY</button>`;
+                     messageDisplay.style.display = 'block';
+                     addRestartListener();
+                     isPlaying = false;
+                     return;
+                }
+
+                // Attempt to play the music
+                bgMusic.play().then(() => {
+                    console.log("BG music playback started.");
+                    startTime = performance.now(); // Set start time *after* successful play
+                    lastFrameTime = 0; // Reset lastFrameTime for the new game loop
+                    scheduleNextNote(); // Start scheduling notes
+                    gameLoopInterval = requestAnimationFrame(gameLoop); // Start the game loop
+                }).catch(e => {
+                    console.error("Music playback failed:", e);
+                    // Provide more informative error for common issues
+                    let errorMsg = `Audio Playback Error: ${e.message}.`;
+                    if (e.name === 'NotAllowedError') {
+                        errorMsg += "<br>Browser blocked autoplay. Ensure you clicked the start button.";
+                    } else if (e.name === 'NotSupportedError') {
+                        errorMsg += "<br>The audio format might not be supported by your browser.";
+                    } else {
+                         errorMsg += "<br>Check network connection and audio file URL.";
+                    }
+                    messageDisplay.innerHTML = `<p>${errorMsg}</p><button id="restart-button">RETRY</button>`;
+                    messageDisplay.style.display = 'block';
+                    addRestartListener();
+                    isPlaying = false;
+                });
+            }
+
+            function addRestartListener() {
+                 const restartButton = document.getElementById('restart-button');
+                 if (restartButton) {
+                     // Clone and replace to remove old listeners safely
+                     const newRestartButton = restartButton.cloneNode(true);
+                     restartButton.parentNode.replaceChild(newRestartButton, restartButton);
+                     newRestartButton.addEventListener('click', startGame);
+                 }
+             }
+            function endGame(message = "Game Over") {
+                 isPlaying = false;
+                 if (noteSpawnTimeout) clearTimeout(noteSpawnTimeout);
+                 cancelAnimationFrame(gameLoopInterval);
+                 bgMusic.pause();
+                 // Maybe add a slight delay before showing the final message
+                 setTimeout(() => {
+                    messageDisplay.innerHTML = `<h2>${message}</h2><p>Final Score: ${score}</p><button id="restart-button">RETRY</button>`;
+                    messageDisplay.style.display = 'block';
+                    addRestartListener();
+                 }, 500); // 500ms delay
+                 console.log("Game Ended. Score:", score);
+             }
+
+            // --- Event Listeners ---
+            startButton.addEventListener('click', startGame);
+
+            document.addEventListener('keydown', (e) => {
+                if (!isPlaying) return;
+                let lane = null;
+                let btnEl = null;
+                const key = e.key.toUpperCase(); // Check uppercase key
+
+                switch (key) {
+                    case 'D': lane = 1; btnEl = document.getElementById('button-1'); break;
+                    case 'F': lane = 2; btnEl = document.getElementById('button-2'); break;
+                    case 'J': lane = 3; btnEl = document.getElementById('button-3'); break;
+                    case 'K': lane = 4; btnEl = document.getElementById('button-4'); break;
+                    default: return; // Ignore other keys
+                }
+
+                e.preventDefault(); // Prevent default browser action for these keys (like scrolling)
+
+                if (btnEl && !btnEl.classList.contains('active')) {
+                     btnEl.classList.add('active');
+                     handleInput(lane);
+
+                     // Use a flag or check class on keyup to prevent removing 'active' if key is held down
+                     // Simpler: Just remove on keyup regardless for now
+                     const keyUpListener = (upEvent) => {
+                         if (upEvent.key.toUpperCase() === key) {
+                             btnEl.classList.remove('active');
+                             document.removeEventListener('keyup', keyUpListener);
+                         }
+                     };
+                     document.addEventListener('keyup', keyUpListener);
+                }
+            });
+
+            hitButtons.forEach(button => {
+                const lane = parseInt(button.dataset.lane);
+                let touchId = null; // Track touch ID for multi-touch safety
+
+                const handlePressStart = (e) => {
+                    if (!isPlaying || button.classList.contains('active')) return;
+
+                    if (e.type === 'touchstart') {
+                        // Prevent multi-triggering the same button with multiple fingers
+                        if (touchId !== null) return;
+                        touchId = e.changedTouches[0].identifier;
+                        e.preventDefault(); // Prevent mouse events from firing after touch
+                    } else {
+                         e.preventDefault();
+                    }
+
+                    button.classList.add('active');
+                    handleInput(lane);
+                };
+
+                const handlePressEnd = (e) => {
+                     if (!button.classList.contains('active')) return;
+
+                     if (e.type === 'touchend' || e.type === 'touchcancel') {
+                         // Ensure this is the touch that started the press
+                         let relevantTouchEnded = false;
+                         for (let i = 0; i < e.changedTouches.length; i++) {
+                             if (e.changedTouches[i].identifier === touchId) {
+                                 relevantTouchEnded = true;
+                                 break;
+                             }
+                         }
+                         if (!relevantTouchEnded) return; // Not the touch that activated the button
+                         touchId = null; // Release the lock
+                         e.preventDefault();
+                     } else {
+                          e.preventDefault();
+                     }
+
+                     button.classList.remove('active');
+                 };
+
+                 // Mouse events
+                button.addEventListener('mousedown', handlePressStart);
+                button.addEventListener('mouseup', handlePressEnd);
+                button.addEventListener('mouseleave', handlePressEnd); // Deactivate if mouse leaves while pressed
+
+                // Touch events
+                button.addEventListener('touchstart', handlePressStart, { passive: false }); // Need false for preventDefault
+                button.addEventListener('touchend', handlePressEnd);
+                button.addEventListener('touchcancel', handlePressEnd); // Handle interruption
+            });
+
+            // --- Initial setup ---
+            messageDisplay.style.display = 'block'; // Show start message initially
+
+            // Preloading for external files is handled by `preload="auto"` attribute in HTML
+            // You can still call .load() if needed, but it's often redundant with preload="auto"
+            // hitSound.load();
+            // missSound.load();
+
+            // Attempt to get target line position after a short delay to allow layout rendering
+             setTimeout(() => {
+                 targetLinePosition = targetLine.offsetTop;
+                 if (targetLinePosition <= 0) {
+                     console.warn("Could not get target line pos initially. Will try again on game start.");
+                 } else {
+                     console.log("Initial Target Line Y:", targetLinePosition);
+                 }
+             }, 200); // Increased delay slightly
+
+            console.log("Synthwave Rhythm Racer (External Audio) Initialized.");
+
+        }); // End DOMContentLoaded
+        // --- JavaScript 代码结束 ---
+    </script>
+</body>
+</html>
