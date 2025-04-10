@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>办公室减压互动动画</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+        
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #ec4899;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --light-color: #f3f4f6;
+            --dark-color: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #app {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f6f7f9 0%, #e9ecef 100%);
+        }
+        
+        #office-scene {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            perspective: 1200px;
+        }
+        
+        .office-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .character {
+            position: absolute;
+            width: 120px;
+            height: 220px;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+            background-color: transparent; /* 确保背景透明 */
+            will-change: transform; /* 提升性能 */
+            visibility: visible !important; /* 确保可见 */
+            opacity: 1 !important; /* 确保不透明 */
+        }
+        
+        .character:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
+        }
+        
+        .character.hit {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        .character.thrown {
+            animation: fall 1s cubic-bezier(.36,.07,.19,.97) forwards;
+        }
+        
+        #control-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 15px 25px;
+            gap: 20px;
+            box-shadow: var(--shadow-xl);
+            z-index: 100;
+        }
+        
+        .tool {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            background: white;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            padding: 10px;
+        }
+        
+        .tool:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .tool.active {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .tool-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .tool-label {
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        #header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--dark-color);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        #message {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--dark-color);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+        
+        #message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        #stress-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        #stress-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark-color);
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        #stress-meter {
+            width: 200px;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        
+        #stress-level {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, var(--danger-color) 0%, var(--warning-color) 50%, var(--success-color) 100%);
+            transform-origin: left;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-radius: 10px;
+        }
+        
+        #reset-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--dark-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #reset-button:hover {
+            background: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .speech-bubble {
+            position: absolute;
+            min-width: 120px;
+            max-width: 180px;
+            background: white;
+            color: var(--dark-color);
+            padding: 12px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 20;
+            pointer-events: none;
+            text-align: center;
+        }
+        
+        .speech-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            margin-left: -10px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent transparent;
+        }
+        
+        .speech-bubble.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        
+        .projectile {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            z-index: 20;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+            pointer-events: none;
+        }
+        
+        .sound-wave {
+            position: absolute;
+            border: 3px solid;
+            border-radius: 50%;
+            opacity: 0.7;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        #confetti-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 200;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            opacity: 0;
+            z-index: 200;
+        }
+        
+        .emoji-reaction {
+            position: absolute;
+            font-size: 30px;
+            z-index: 25;
+            pointer-events: none;
+            animation: floatUp 1.5s forwards;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            20% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+            80% { transform: translateY(-100px) scale(1); opacity: 1; }
+            100% { transform: translateY(-120px) scale(0.8); opacity: 0; }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate3d(-5px, 0, 0) rotate(-3deg); }
+            20%, 40%, 60%, 80% { transform: translate3d(5px, 0, 0) rotate(3deg); }
+        }
+        
+        @keyframes fall {
+            0% { transform: translate3d(0, 0, 0) rotate(0); }
+            50% { transform: translate3d(50px, 100px, 0) rotate(90deg); }
+            100% { transform: translate3d(100px, 300px, 0) rotate(180deg); opacity: 0; }
+        }
+        
+        .highlight {
+            animation: highlight 0.5s infinite alternate;
+        }
+        
+        @keyframes highlight {
+            0% { filter: brightness(1) drop-shadow(0 0 5px rgba(255, 255, 255, 0.5)); }
+            100% { filter: brightness(1.3) drop-shadow(0 0 15px rgba(255, 255, 255, 0.8)); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            #control-panel {
+                padding: 10px 15px;
+                gap: 10px;
+            }
+            
+            .tool {
+                width: 60px;
+                height: 60px;
+            }
+            
+            #stress-meter {
+                width: 150px;
+            }
+            
+            #title {
+                font-size: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #control-panel {
+                padding: 8px 10px;
+                gap: 5px;
+            }
+            
+            .tool {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .tool-icon {
+                width: 24px;
+                height: 24px;
+                margin-bottom: 2px;
+            }
+            
+            .tool-label {
+                font-size: 10px;
+            }
+            
+            #stress-meter {
+                width: 120px;
+            }
+            
+            #title {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="office-scene">
+            <!-- Office background -->
+            <svg class="office-bg" viewBox="0 0 1000 600">
+                <!-- Background gradient -->
+                <defs>
+                    <linearGradient id="wall-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#edf2f7" />
+                        <stop offset="100%" stop-color="#cbd5e0" />
+                    </linearGradient>
+                    <linearGradient id="floor-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#a0aec0" />
+                        <stop offset="100%" stop-color="#718096" />
+                    </linearGradient>
+                    <linearGradient id="ceiling-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#f7fafc" />
+                        <stop offset="100%" stop-color="#edf2f7" />
+                    </linearGradient>
+                    <linearGradient id="desk-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#9c7867" />
+                        <stop offset="100%" stop-color="#7d5e50" />
+                    </linearGradient>
+                    <linearGradient id="window-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#c6f6ff" />
+                        <stop offset="100%" stop-color="#90caf9" />
+                    </linearGradient>
+                    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="2" dy="2" stdDeviation="5" flood-opacity="0.3"/>
+                    </filter>
+                    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <circle cx="3" cy="3" r="1.5" fill="#718096" opacity="0.2"/>
+                    </pattern>
+                </defs>
+                
+                <!-- Wall background -->
+                <rect x="0" y="0" width="1000" height="450" fill="url(#wall-gradient)" />
+                
+                <!-- Ceiling -->
+                <rect x="0" y="0" width="1000" height="50" fill="url(#ceiling-gradient)" />
+                <rect x="0" y="50" width="1000" height="2" fill="#cbd5e0" />
+                
+                <!-- Floor -->
+                <rect x="0" y="450" width="1000" height="150" fill="url(#floor-gradient)" />
+                <rect x="0" y="450" width="1000" height="150" fill="url(#dots)" />
+                
+                <!-- Windows -->
+                <rect x="50" y="80" width="220" height="280" rx="5" fill="#64748b" stroke="#475569" stroke-width="2" />
+                <rect x="60" y="90" width="200" height="260" rx="3" fill="url(#window-gradient)" />
+                <line x1="160" y1="90" x2="160" y2="350" stroke="#a0aec0" stroke-width="2" />
+                <line x1="60" y1="220" x2="260" y2="220" stroke="#a0aec0" stroke-width="2" />
+                
+                <rect x="390" y="80" width="220" height="280" rx="5" fill="#64748b" stroke="#475569" stroke-width="2" />
+                <rect x="400" y="90" width="200" height="260" rx="3" fill="url(#window-gradient)" />
+                <line x1="500" y1="90" x2="500" y2="350" stroke="#a0aec0" stroke-width="2" />
+                <line x1="400" y1="220" x2="600" y2="220" stroke="#a0aec0" stroke-width="2" />
+                
+                <rect x="730" y="80" width="220" height="280" rx="5" fill="#64748b" stroke="#475569" stroke-width="2" />
+                <rect x="740" y="90" width="200" height="260" rx="3" fill="url(#window-gradient)" />
+                <line x1="840" y1="90" x2="840" y2="350" stroke="#a0aec0" stroke-width="2" />
+                <line x1="740" y1="220" x2="940" y2="220" stroke="#a0aec0" stroke-width="2" />
+                
+                <!-- Desks -->
+                <rect x="120" y="450" width="220" height="20" rx="3" fill="url(#desk-gradient)" filter="url(#shadow)" />
+                <rect x="130" y="470" width="200" height="50" rx="3" fill="#64748b" filter="url(#shadow)" />
+                <rect x="180" y="470" width="10" height="50" fill="#4a5568" />
+                <rect x="270" y="470" width="10" height="50" fill="#4a5568" />
+                
+                <rect x="390" y="450" width="220" height="20" rx="3" fill="url(#desk-gradient)" filter="url(#shadow)" />
+                <rect x="400" y="470" width="200" height="50" rx="3" fill="#64748b" filter="url(#shadow)" />
+                <rect x="450" y="470" width="10" height="50" fill="#4a5568" />
+                <rect x="540" y="470" width="10" height="50" fill="#4a5568" />
+                
+                <rect x="660" y="450" width="220" height="20" rx="3" fill="url(#desk-gradient)" filter="url(#shadow)" />
+                <rect x="670" y="470" width="200" height="50" rx="3" fill="#64748b" filter="url(#shadow)" />
+                <rect x="720" y="470" width="10" height="50" fill="#4a5568" />
+                <rect x="810" y="470" width="10" height="50" fill="#4a5568" />
+                
+                <!-- Plants -->
+                <rect x="930" y="420" width="30" height="30" rx="3" fill="#7d5e50" />
+                <path d="M915 420 Q930 370 945 420" stroke="#48bb78" stroke-width="5" fill="none" />
+                <path d="M915 410 Q930 370 945 410" stroke="#48bb78" stroke-width="4" fill="none" />
+                <path d="M920 400 Q930 360 940 400" stroke="#48bb78" stroke-width="3" fill="none" />
+                <circle cx="930" cy="370" r="15" fill="#68d391" />
+                <circle cx="915" cy="385" r="10" fill="#68d391" />
+                <circle cx="945" cy="385" r="10" fill="#68d391" />
+                
+                <!-- Coffee machine -->
+                <rect x="50" y="400" width="50" height="50" rx="5" fill="#2d3748" filter="url(#shadow)" />
+                <rect x="60" y="380" width="30" height="20" rx="3" fill="#4a5568" />
+                <rect x="65" y="410" width="20" height="15" rx="2" fill="#a0aec0" />
+                <circle cx="75" cy="390" r="5" fill="#e53e3e" />
+            </svg>
+        </div>
+        
+        <button id="reset-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 1-9 9"></path>
+                <path d="M3 12a9 9 0 0 1 9-9"></path>
+                <path d="M21 12H3"></path>
+                <path d="M12 3v9"></path>
+            </svg>
+            重置场景
+        </button>
+        
+        <div id="header">
+            <div id="title">办公室减压互动</div>
+            <div id="message"></div>
+        </div>
+        
+        <div id="stress-container">
+            <div id="stress-label">压力值: 100%</div>
+            <div id="stress-meter">
+                <div id="stress-level"></div>
+            </div>
+        </div>
+        
+        <div id="control-panel">
+            <div id="slap-tool" class="tool">
+                <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 12.5V10a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v1.4"></path>
+                    <path d="M14 11.5V9a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v3.5"></path>
+                    <path d="M10 12.5V5a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v9.5"></path>
+                    <path d="M6 14.5V3a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v12.5"></path>
+                    <path d="M18 16a4 4 0 0 1-4 4h-6.5a4 4 0 0 1-4-4v-1.5"></path>
+                </svg>
+                <div class="tool-label">拍打</div>
+            </div>
+            
+            <div id="throw-tool" class="tool">
+                <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v6l4 2"></path>
+                </svg>
+                <div class="tool-label">扔东西</div>
+            </div>
+            
+            <div id="scream-tool" class="tool">
+                <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <div class="tool-label">喊叫</div>
+            </div>
+            
+            <div id="shake-tool" class="tool">
+                <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12h1"></path>
+                    <path d="M5 12h1"></path>
+                    <path d="M8 12h1"></path>
+                    <path d="M11 12h1"></path>
+                    <path d="M14 12h1"></path>
+                    <path d="M17 12h1"></path>
+                    <path d="M20 12h1"></path>
+                    <path d="M12 2v1"></path>
+                    <path d="M12 5v1"></path>
+                    <path d="M12 8v1"></path>
+                    <path d="M12 11v1"></path>
+                    <path d="M12 14v1"></path>
+                    <path d="M12 17v1"></path>
+                    <path d="M12 20v1"></path>
+                </svg>
+                <div class="tool-label">抖动</div>
+            </div>
+        </div>
+        
+        <div id="confetti-container"></div>
+    </div>
+    
+    <script>
+        // Character data with improved designs
+        const characters = [
+            {
+                id: 'boss',
+                title: '老板',
+                x: 730,
+                y: 350,
+                reactions: {
+                    slap: ['我要扣你工资！', '你完蛋了！', '你被开除了！', '你知道我是谁吗？', '我会让你后悔的！'],
+                    throw: ['什么东西？！', '谁干的？！', '我要报警了！', '这很不专业！', '保安在哪里？'],
+                    scream: ['你在对谁喊？', '我听不见！', '保持专业！', '这就是你的态度？', '喊什么喊！'],
+                    shake: ['停下来！', '你疯了吗？', '我头晕了！', '这是骚扰！', '住手！']
+                },
+                emojis: ['💰', '👔', '📉', '🤬', '📊'],
+                svg: `
+                <svg viewBox="0 0 120 220">
+                    <!-- Shadow -->
+                    <ellipse cx="60" cy="205" rx="35" ry="10" fill="#0004" opacity="0.3" />
+                    
+                    <!-- Legs -->
+                    <path d="M50 130 L45 200 L55 200 L50 130" fill="#1a202c" />
+                    <path d="M70 130 L65 200 L75 200 L70 130" fill="#1a202c" />
+                    
+                    <!-- Body -->
+                    <rect x="40" y="80" width="40" height="60" rx="10" fill="#3182ce" />
+                    <rect x="45" y="80" width="30" height="40" rx="5" fill="#2b6cb0" />
+                    
+                    <!-- Neck -->
+                    <rect x="55" y="70" width="10" height="10" fill="#f6ad55" />
+                    
+                    <!-- Head -->
+                    <circle cx="60" cy="45" r="30" fill="#f6ad55" />
+                    
+                    <!-- Hair -->
+                    <path d="M40 35 Q60 15 80 35 Q75 25 60 25 Q45 25 40 35" fill="#4a5568" />
+                    
+                    <!-- Eyes -->
+                    <circle cx="50" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="70" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="50" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    <circle cx="70" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    <path d="M45 35 Q50 32 55 35" stroke="#4a5568" stroke-width="1.5" fill="none" />
+                    <path d="M65 35 Q70 32 75 35" stroke="#4a5568" stroke-width="1.5" fill="none" />
+                    
+                    <!-- Mouth -->
+                    <path d="M50 55 Q60 65 70 55" stroke="#1a202c" stroke-width="2" fill="none" class="mouth" />
+                    
+                    <!-- Tie -->
+                    <path d="M60 80 L55 100 L60 105 L65 100 L60 80" fill="#f56565" />
+                    
+                    <!-- Arms -->
+                    <rect x="25" y="85" width="15" height="35" rx="5" fill="#3182ce" />
+                    <rect x="80" y="85" width="15" height="35" rx="5" fill="#3182ce" />
+                    
+                    <!-- Hands -->
+                    <circle cx="30" cy="125" r="7" fill="#f6ad55" />
+                    <circle cx="90" cy="125" r="7" fill="#f6ad55" />
+                    
+                    <!-- Glasses -->
+                    <rect x="42" y="38" width="16" height="10" rx="3" stroke="#2d3748" stroke-width="1.5" fill="none" />
+                    <rect x="62" y="38" width="16" height="10" rx="3" stroke="#2d3748" stroke-width="1.5" fill="none" />
+                    <line x1="58" y1="43" x2="62" y2="43" stroke="#2d3748" stroke-width="1.5" />
+                </svg>
+                `
+            },
+            {
+                id: 'coworker',
+                title: '同事',
+                x: 500,
+                y: 350,
+                reactions: {
+                    slap: ['疼！', '我不卷了！', '你干嘛打我？', '我不做大声逼逼了！', '我是锡纸烫我是大傻逼！'],
+                    throw: ['啊！', '谁扔的？', '太过分了！', '我要投诉你！', '我再也不卷你了！'],
+                    scream: ['我的锡纸烫要秃了！', '干嘛那么大声！', '我的耳朵！', '有什么好喊的？', '冷静点好吗？'],
+                    shake: ['眩晕了...', '别晃了！', '我要吐了...', '头好晕...', '停，求你了！']
+                },
+                emojis: ['😲', '📝', '☕', '🙄', '💻'],
+                svg: `
+                <svg viewBox="0 0 120 220">
+                    <!-- Shadow -->
+                    <ellipse cx="60" cy="205" rx="35" ry="10" fill="#0004" opacity="0.3" />
+                    
+                    <!-- Legs -->
+                    <path d="M50 130 L45 200 L55 200 L50 130" fill="#4a5568" />
+                    <path d="M70 130 L65 200 L75 200 L70 130" fill="#4a5568" />
+                    
+                    <!-- Body -->
+                    <rect x="40" y="80" width="40" height="60" rx="10" fill="#38a169" />
+                    
+                    <!-- Neck -->
+                    <rect x="55" y="70" width="10" height="10" fill="#f6e05e" />
+                    
+                    <!-- Head -->
+                    <circle cx="60" cy="45" r="30" fill="#f6e05e" />
+                    
+                    <!-- Hair -->
+                    <path d="M30 45 Q45 0 90 45 L85 50 Q60 30 35 50 L30 45" fill="#805ad5" />
+                    
+                    <!-- Eyes -->
+                    <circle cx="50" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="70" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="50" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    <circle cx="70" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    
+                    <!-- Mouth -->
+                    <path d="M50 55 Q60 60 70 55" stroke="#1a202c" stroke-width="2" fill="none" class="mouth" />
+                    
+                    <!-- T-shirt details -->
+                    <text x="60" y="110" text-anchor="middle" font-size="12" font-weight="bold" fill="white">:)</text>
+                    
+                    <!-- Arms -->
+                    <rect x="25" y="85" width="15" height="35" rx="5" fill="#38a169" />
+                    <rect x="80" y="85" width="15" height="35" rx="5" fill="#38a169" />
+                    
+                    <!-- Hands -->
+                    <circle cx="30" cy="125" r="7" fill="#f6e05e" />
+                    <circle cx="90" cy="125" r="7" fill="#f6e05e" />
+                    
+                    <!-- Headphones -->
+                    <path d="M30 45 C25 25 95 25 90 45" stroke="#4a5568" stroke-width="3" fill="none" />
+                    <rect x="25" y="40" width="8" height="15" rx="4" fill="#4a5568" />
+                    <rect x="87" y="40" width="8" height="15" rx="4" fill="#4a5568" />
+                </svg>
+                `
+            },
+            {
+                id: 'hr',
+                title: 'HR',
+                x: 230,
+                y: 350,
+                reactions: {
+                    slap: ['这是职场暴力！', '我要记录这个！', '行为不当！', '这违反政策！', '你会收到警告！'],
+                    throw: ['太没素质了！', '违反公司规定！', '我会上报的！', '这是不可接受的！', '需要调查！'],
+                    scream: ['请保持专业！', '音量控制！', '这会影响你的绩效！', '我们需要谈谈！', '行为准则不允许！'],
+                    shake: ['停下这种行为！', '这是骚扰！', '我要报告你！', '不专业的行为！', '收到投诉了！']
+                },
+                emojis: ['📋', '🔍', '📝', '🤔', '📢'],
+                svg: `
+                <svg viewBox="0 0 120 220">
+                    <!-- Shadow -->
+                    <ellipse cx="60" cy="205" rx="35" ry="10" fill="#0004" opacity="0.3" />
+                    
+                    <!-- Legs -->
+                    <path d="M45 130 L40 200 L50 200 L45 130" fill="#5a67d8" />
+                    <path d="M75 130 L70 200 L80 200 L75 130" fill="#5a67d8" />
+                    
+                    <!-- Skirt -->
+                    <path d="M40 90 L35 130 L85 130 L80 90 Z" fill="#d53f8c" />
+                    
+                    <!-- Body -->
+                    <rect x="40" y="80" width="40" height="20" rx="5" fill="#d53f8c" />
+                    
+                    <!-- Neck -->
+                    <rect x="55" y="70" width="10" height="10" fill="#feb2b2" />
+                    
+                    <!-- Head -->
+                    <circle cx="60" cy="45" r="30" fill="#feb2b2" />
+                    
+                    <!-- Hair -->
+                    <path d="M35 35 Q40 10 60 10 Q80 10 85 35 Q75 30 60 30 Q45 30 35 35" fill="#f56565" />
+                    <path d="M35 35 Q45 45 35 60 L30 50 Q25 40 35 35" fill="#f56565" />
+                    <path d="M85 35 Q75 45 85 60 L90 50 Q95 40 85 35" fill="#f56565" />
+                    
+                    <!-- Eyes -->
+                    <circle cx="50" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="70" cy="40" r="5" fill="white" class="eye-white" />
+                    <circle cx="50" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    <circle cx="70" cy="40" r="2.5" fill="#1a202c" class="eye-pupil" />
+                    
+                    <!-- Mouth -->
+                    <path d="M50 55 Q60 60 70 55" stroke="#1a202c" stroke-width="2" fill="none" class="mouth" />
+                    
+                    <!-- Badge -->
+                    <rect x="45" y="85" width="10" height="15" rx="2" fill="white" />
+                    <line x1="50" y1="88" x2="50" y2="92" stroke="#4a5568" stroke-width="1" />
+                    <line x1="47" y1="95" x2="53" y2="95" stroke="#4a5568" stroke-width="1" />
+                    
+                    <!-- Arms -->
+                    <rect x="25" y="85" width="15" height="25" rx="5" fill="#d53f8c" />
+                    <rect x="80" y="85" width="15" height="25" rx="5" fill="#d53f8c" />
+                    
+                    <!-- Hands -->
+                    <circle cx="30" cy="115" r="7" fill="#feb2b2" />
+                    <circle cx="90" cy="115" r="7" fill="#feb2b2" />
+                    
+                    <!-- Earrings -->
+                    <circle cx="30" cy="45" r="3" fill="#ecc94b" />
+                    <circle cx="90" cy="45" r="3" fill="#ecc94b" />
+                </svg>
+                `
+            }
+        ];
+        
+        // Tool data
+        const tools = ['slap', 'throw', 'scream', 'shake'];
+        
+        // Current state
+        let currentTool = null;
+        let stressLevel = 100; // Start at maximum stress
+        let animationInProgress = false;
+        
+        // Initialize the scene
+        document.addEventListener('DOMContentLoaded', () => {
+            // Create characters with fixed positioning
+            characters.forEach(character => {
+                createCharacter(character);
+            });
+            
+            // Verify boss character visibility - fix if needed
+            setTimeout(() => {
+                const bossElement = document.getElementById('boss');
+                if (!bossElement || bossElement.offsetHeight === 0) {
+                    console.log('Boss character not visible, recreating...');
+                    const bossData = characters.find(c => c.id === 'boss');
+                    if (bossData) {
+                        const oldBoss = document.getElementById('boss');
+                        if (oldBoss) oldBoss.remove();
+                        createCharacter(bossData);
+                    }
+                }
+            }, 500);
+            
+            // Setup tools
+            tools.forEach(tool => {
+                document.getElementById(`${tool}-tool`).addEventListener('click', () => {
+                    selectTool(tool);
+                });
+            });
+            
+            // Reset button
+            document.getElementById('reset-button').addEventListener('click', resetScene);
+            
+            // Update stress meter display
+            updateStressMeter();
+            
+            // Show welcome message
+            showMessage('选择一个工具，然后点击角色开始发泄!');
+            
+            // Start character subtle animations
+            startIdleAnimations();
+        });
+        
+        // Create a character on the screen
+        function createCharacter(character) {
+            const characterElement = document.createElement('div');
+            characterElement.className = 'character pulse';
+            characterElement.id = character.id;
+            characterElement.style.left = `${character.x - 60}px`;
+            characterElement.style.top = `${character.y - 110}px`;
+            characterElement.style.zIndex = character.id === 'boss' ? '15' : '10'; // 确保老板在最前面
+            characterElement.innerHTML = character.svg;
+            
+            // Add name label
+            const nameElement = document.createElement('div');
+            nameElement.style.position = 'absolute';
+            nameElement.style.bottom = '-25px';
+            nameElement.style.left = '0';
+            nameElement.style.width = '100%';
+            nameElement.style.textAlign = 'center';
+            nameElement.style.fontSize = '14px';
+            nameElement.style.fontWeight = '600';
+            nameElement.style.color = '#1a202c';
+            nameElement.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+            nameElement.style.padding = '3px 8px';
+            nameElement.style.borderRadius = '12px';
+            nameElement.textContent = character.title;
+            characterElement.appendChild(nameElement);
+            
+            // Add speech bubble
+            const speechBubble = document.createElement('div');
+            speechBubble.className = 'speech-bubble';
+            speechBubble.style.left = '0';
+            speechBubble.style.top = '-80px';
+            characterElement.appendChild(speechBubble);
+            
+            // Add to scene
+            document.getElementById('office-scene').appendChild(characterElement);
+            
+            // Add event listener for interaction
+            characterElement.addEventListener('click', () => {
+                if (currentTool && !animationInProgress) {
+                    interactWithCharacter(characterElement, character, currentTool);
+                }
+            });
+        }
+        
+        // Start subtle idle animations
+        function startIdleAnimations() {
+            // Make characters breathe slightly
+            setInterval(() => {
+                document.querySelectorAll('.character').forEach(char => {
+                    if (!char.classList.contains('hit') && !char.classList.contains('thrown')) {
+                        const randomScale = 1 + Math.random() * 0.02;
+                        char.style.transform = `scale(${randomScale})`;
+                        
+                        // Subtle movement
+                        const randomX = Math.random() * 2 - 1;
+                        const randomY = Math.random() * 2 - 1;
+                        char.style.marginLeft = `${randomX}px`;
+                        char.style.marginTop = `${randomY}px`;
+                    }
+                });
+            }, 1500);
+            
+            // Blink eyes occasionally
+            setInterval(() => {
+                const character = characters[Math.floor(Math.random() * characters.length)];
+                const charElement = document.getElementById(character.id);
+                if (charElement && !charElement.classList.contains('hit') && !charElement.classList.contains('thrown')) {
+                    const eyes = charElement.querySelectorAll('.eye-pupil');
+                    
+                    // Blink animation
+                    eyes.forEach(eye => {
+                        eye.setAttribute('r', '0.5');
+                        setTimeout(() => {
+                            eye.setAttribute('r', '2.5');
+                        }, 150);
+                    });
+                }
+            }, 3000);
+        }
+        
+        // Select a tool
+        function selectTool(tool) {
+            // Deselect any previously selected tool
+            document.querySelectorAll('.tool').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Select new tool
+            currentTool = tool;
+            document.getElementById(`${tool}-tool`).classList.add('active');
+            
+            // Show message
+            showMessage(`已选择${getToolNameInChinese(tool)}工具`);
+            
+            // Highlight characters to show they're interactive
+            document.querySelectorAll('.character').forEach(char => {
+                char.classList.add('highlight');
+                setTimeout(() => {
+                    char.classList.remove('highlight');
+                }, 600);
+            });
+        }
+        
+        // Get tool name in Chinese
+        function getToolNameInChinese(tool) {
+            switch(tool) {
+                case 'slap': return '拍打';
+                case 'throw': return '扔东西';
+                case 'scream': return '喊叫';
+                case 'shake': return '抖动';
+                default: return '';
+            }
+        }
+        
+        // Interact with a character
+        function interactWithCharacter(characterElement, characterData, tool) {
+            if (animationInProgress) return;
+            
+            animationInProgress = true;
+            
+            switch(tool) {
+                case 'slap':
+                    slapCharacter(characterElement, characterData);
+                    break;
+                case 'throw':
+                    throwAtCharacter(characterElement, characterData);
+                    break;
+                case 'scream':
+                    screamAtCharacter(characterElement, characterData);
+                    break;
+                case 'shake':
+                    shakeCharacter(characterElement, characterData);
+                    break;
+            }
+            
+            // Add emoji reaction
+            createEmojiReaction(characterElement, characterData);
+            
+            // Reduce stress
+            reduceStress(tool === 'shake' ? 15 : 10);
+            
+            // End animation lock after delay
+            setTimeout(() => {
+                animationInProgress = false;
+            }, 1000);
+        }
+        
+        // Slap interaction
+        function slapCharacter(characterElement, characterData) {
+            // Create hand animation
+            const hand = document.createElement('div');
+            hand.style.position = 'absolute';
+            hand.style.width = '40px';
+            hand.style.height = '40px';
+            hand.style.zIndex = '50';
+            hand.style.opacity = '0.9';
+            hand.style.transition = 'all 0.3s cubic-bezier(.17,.67,.83,.67)';
+            hand.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="#e53e3e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
+                    <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
+                    <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
+                    <path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+                </svg>
+            `;
+            
+            document.getElementById('office-scene').appendChild(hand);
+            
+            // Position hand
+            const characterRect = characterElement.getBoundingClientRect();
+            const sceneRect = document.getElementById('office-scene').getBoundingClientRect();
+            
+            hand.style.left = `${characterRect.left - sceneRect.left + 100}px`;
+            hand.style.top = `${characterRect.top - sceneRect.top + 50}px`;
+            
+            // Animate hand
+            setTimeout(() => {
+                hand.style.left = `${characterRect.left - sceneRect.left + 30}px`;
+                hand.style.top = `${characterRect.top - sceneRect.top + 30}px`;
+                hand.style.transform = 'rotate(-45deg)';
+                
+                // Play sound
+                playSound('slap');
+                
+                // Hit character
+                characterElement.classList.add('hit');
+                setTimeout(() => {
+                    characterElement.classList.remove('hit');
+                }, 500);
+                
+                // Show reaction
+                showReaction(characterElement, characterData.reactions.slap);
+                
+                // Remove hand after animation
+                setTimeout(() => {
+                    hand.remove();
+                }, 300);
+            }, 50);
+        }
+        
+        // Throw interaction
+        function throwAtCharacter(characterElement, characterData) {
+            // Create projectile
+            const projectile = document.createElement('div');
+            projectile.className = 'projectile';
+            
+            // Random projectile type
+            const projectileTypes = [
+                `<svg viewBox="0 0 24 24" fill="#f6ad55"><path d="M17 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10m0 2H7v14h10V5z"/></svg>`, // folder
+                `<svg viewBox="0 0 24 24" fill="#4299e1"><path d="M19 4h-4L9 2H5a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-4 6h-2v2h2v6h-2v2h6v-2h-2v-8z"/></svg>`, // coffee
+                `<svg viewBox="0 0 24 24" fill="#48bb78"><path d="M21 5v14h2V5h-2M17 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2M9 7h2v4L5 7V5l6 6h-2V7M3 19h2V5H3v14Z"/></svg>`, // calendar
+                `<svg viewBox="0 0 24 24" fill="#f56565"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`, // heart
+                `<svg viewBox="0 0 24 24" fill="#ecc94b"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>` // check
+            ];
+            const randomProjectile = projectileTypes[Math.floor(Math.random() * projectileTypes.length)];
+            projectile.innerHTML = randomProjectile;
+            
+            // Position projectile
+            const sceneElement = document.getElementById('office-scene');
+            sceneElement.appendChild(projectile);
+            
+            const characterRect = characterElement.getBoundingClientRect();
+            const sceneRect = sceneElement.getBoundingClientRect();
+            
+            // Starting position (bottom of screen)
+            projectile.style.left = `${window.innerWidth / 2 - 25}px`;
+            projectile.style.top = `${window.innerHeight - 100}px`;
+            
+            // Animate projectile
+            setTimeout(() => {
+                projectile.style.transition = 'all 0.5s cubic-bezier(.17,.67,.83,.67)';
+                projectile.style.left = `${characterRect.left - sceneRect.left + 40}px`;
+                projectile.style.top = `${characterRect.top - sceneRect.top + 30}px`;
+                projectile.style.transform = 'rotate(360deg)';
+                
+                setTimeout(() => {
+                    // Play sound
+                    playSound('throw');
+                    
+                    // Hit character
+                    characterElement.classList.add('hit');
+                    setTimeout(() => {
+                        characterElement.classList.remove('hit');
+                    }, 500);
+                    
+                    // Show reaction
+                    showReaction(characterElement, characterData.reactions.throw);
+                    
+                    // Remove projectile
+                    projectile.remove();
+                }, 500);
+            }, 50);
+        }
+        
+        // Scream interaction
+        function screamAtCharacter(characterElement, characterData) {
+            // Create sound waves with better animation
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const wave = document.createElement('div');
+                    wave.className = 'sound-wave';
+                    
+                    // Random color from accent color palette
+                    const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#3b82f6'];
+                    wave.style.borderColor = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    const characterRect = characterElement.getBoundingClientRect();
+                    const sceneRect = document.getElementById('office-scene').getBoundingClientRect();
+                    
+                    wave.style.left = `${(characterRect.left + characterRect.width/2) - sceneRect.left - 25 - (i*20)}px`;
+                    wave.style.top = `${(characterRect.top + characterRect.height/2) - sceneRect.top - 25 - (i*20)}px`;
+                    wave.style.width = `${50 + (i*40)}px`;
+                    wave.style.height = `${50 + (i*40)}px`;
+                    
+                    document.getElementById('office-scene').appendChild(wave);
+                    
+                    // Play sound once for first wave
+                    if (i === 0) {
+                        playSound('scream');
+                    }
+                    
+                    // Animate wave
+                    setTimeout(() => {
+                        wave.style.transition = 'all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        wave.style.opacity = '0';
+                        wave.style.width = `${150 + (i*60)}px`;
+                        wave.style.height = `${150 + (i*60)}px`;
+                        
+                        setTimeout(() => {
+                            wave.remove();
+                        }, 700);
+                    }, 10);
+                }, i * 200);
+            }
+            
+            // Shake character
+            characterElement.classList.add('hit');
+            setTimeout(() => {
+                characterElement.classList.remove('hit');
+            }, 500);
+            
+            // Show reaction
+            showReaction(characterElement, characterData.reactions.scream);
+        }
+        
+        // Shake interaction (new)
+        function shakeCharacter(characterElement, characterData) {
+            // Intense shake animation
+            characterElement.style.animation = 'none';
+            
+            // Force reflow
+            void characterElement.offsetWidth;
+            
+            characterElement.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
+            characterElement.style.animationIterationCount = '3';
+            
+            // Add motion blur effect
+            characterElement.style.filter = 'blur(1px)';
+            
+            // Play sound
+            playSound('shake');
+            
+            // Show reaction
+            showReaction(characterElement, characterData.reactions.shake);
+            
+            // Reset after animation
+            setTimeout(() => {
+                characterElement.style.animation = '';
+                characterElement.style.filter = '';
+                
+                // Return to pulse animation
+                setTimeout(() => {
+                    characterElement.classList.add('pulse');
+                }, 100);
+            }, 1500);
+        }
+        
+        // Show character reaction
+        function showReaction(characterElement, reactions) {
+            // Get random reaction
+            const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+            
+            // Show in speech bubble
+            const speechBubble = characterElement.querySelector('.speech-bubble');
+            speechBubble.textContent = reaction;
+            speechBubble.classList.add('show');
+            
+            // Hide after delay
+            setTimeout(() => {
+                speechBubble.classList.remove('show');
+            }, 2500);
+        }
+        
+        // Create emoji reaction
+        function createEmojiReaction(characterElement, characterData) {
+            const emoji = characterData.emojis[Math.floor(Math.random() * characterData.emojis.length)];
+            
+            const emojiElement = document.createElement('div');
+            emojiElement.className = 'emoji-reaction';
+            emojiElement.textContent = emoji;
+            
+            const characterRect = characterElement.getBoundingClientRect();
+            const sceneRect = document.getElementById('office-scene').getBoundingClientRect();
+            
+            emojiElement.style.left = `${(characterRect.left + characterRect.width/2) - sceneRect.left - 15 + (Math.random() * 30 - 15)}px`;
+            emojiElement.style.top = `${characterRect.top - sceneRect.top + 20}px`;
+            
+            document.getElementById('office-scene').appendChild(emojiElement);
+            
+            // Remove after animation
+            setTimeout(() => {
+                emojiElement.remove();
+            }, 1500);
+        }
+        
+        // Show message
+        function showMessage(text) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.classList.add('show');
+            
+            // Hide after delay
+            setTimeout(() => {
+                messageElement.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Play sound effect
+        function playSound(type) {
+            // Create audio context
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create oscillator and gain nodes
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Set sound parameters based on type
+            switch(type) {
+                case 'slap':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.value = 300;
+                    gainNode.gain.value = 0.2;
+                    oscillator.start();
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                    setTimeout(() => oscillator.stop(), 300);
+                    break;
+                    
+                case 'throw':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 600;
+                    gainNode.gain.value = 0.2;
+                    oscillator.start();
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.5);
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+                    setTimeout(() => oscillator.stop(), 500);
+                    break;
+                    
+                case 'scream':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.value = 500;
+                    gainNode.gain.value = 0.15;
+                    oscillator.start();
+                    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.8);
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.8);
+                    setTimeout(() => oscillator.stop(), 800);
+                    break;
+                    
+                case 'shake':
+                    // Create more complex sound with multiple oscillators
+                    const osc1 = audioContext.createOscillator();
+                    const osc2 = audioContext.createOscillator();
+                    const gain1 = audioContext.createGain();
+                    const gain2 = audioContext.createGain();
+                    
+                    osc1.connect(gain1);
+                    osc2.connect(gain2);
+                    gain1.connect(audioContext.destination);
+                    gain2.connect(audioContext.destination);
+                    
+                    osc1.type = 'sine';
+                    osc2.type = 'triangle';
+                    osc1.frequency.value = 70;
+                    osc2.frequency.value = 60;
+                    gain1.gain.value = 0.1;
+                    gain2.gain.value = 0.05;
+                    
+                    osc1.start();
+                    osc2.start();
+                    
+                    // Create shaking sound effect
+                    for (let i = 0; i < 8; i++) {
+                        setTimeout(() => {
+                            osc1.frequency.exponentialRampToValueAtTime(
+                                70 + (i % 2) * 50, 
+                                audioContext.currentTime + 0.1
+                            );
+                            osc2.frequency.exponentialRampToValueAtTime(
+                                60 + (i % 2) * 40, 
+                                audioContext.currentTime + 0.1
+                            );
+                        }, i * 200);
+                    }
+                    
+                    setTimeout(() => {
+                        gain1.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                        gain2.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                        setTimeout(() => {
+                            osc1.stop();
+                            osc2.stop();
+                        }, 300);
+                    }, 1600);
+                    return; // Skip the rest for shake since we handled it separately
+            }
+        }
+        
+        // Reduce stress level
+        function reduceStress(amount) {
+            stressLevel = Math.max(0, stressLevel - amount);
+            updateStressMeter();
+            
+            // Check if stress is gone
+            if (stressLevel === 0) {
+                celebrateStressRelief();
+            }
+        }
+        
+        // Update stress meter display
+        function updateStressMeter() {
+            const stressLevelElement = document.getElementById('stress-level');
+            stressLevelElement.style.transform = `scaleX(${stressLevel / 100})`;
+            
+            // Update stress label percentage
+            document.getElementById('stress-label').textContent = `压力值: ${stressLevel}%`;
+        }
+        
+        // Celebrate stress relief
+        function celebrateStressRelief() {
+            showMessage('恭喜你！压力已完全释放！😄');
+            
+            // Create confetti explosion
+            for (let i = 0; i < 150; i++) {
+                createConfetti(i * 20);
+            }
+            
+            // Highlight all characters
+            document.querySelectorAll('.character').forEach(char => {
+                char.classList.add('highlight');
+                
+                // Add celebration emojis
+                const celebrationEmojis = ['🎉', '🎊', '👏', '🥳', '😄'];
+                
+                setTimeout(() => {
+                    const emojiElement = document.createElement('div');
+                    emojiElement.className = 'emoji-reaction';
+                    emojiElement.textContent = celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)];
+                    
+                    const characterRect = char.getBoundingClientRect();
+                    const sceneRect = document.getElementById('office-scene').getBoundingClientRect();
+                    
+                    emojiElement.style.left = `${(characterRect.left + characterRect.width/2) - sceneRect.left - 15}px`;
+                    emojiElement.style.top = `${characterRect.top - sceneRect.top + 20}px`;
+                    
+                    document.getElementById('office-scene').appendChild(emojiElement);
+                }, Math.random() * 500);
+            });
+            
+            // Play celebration sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Major scale notes
+            const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+            
+            // Play celebratory tune
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = notes[i % 8];
+                    gain.gain.value = 0.2;
+                    
+                    osc.start();
+                    gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                    setTimeout(() => osc.stop(), 300);
+                }, i * 150);
+            }
+        }
+        
+        // Create confetti particle
+        function createConfetti(delay = 0) {
+            const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#84cc16', '#64748b'];
+            
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Random position, size and rotation
+            confetti.style.left = `${Math.random() * 100}%`;
+            confetti.style.top = '-20px';
+            confetti.style.width = `${5 + Math.random() * 15}px`;
+            confetti.style.height = `${5 + Math.random() * 15}px`;
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '3px';
+            confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            
+            document.getElementById('confetti-container').appendChild(confetti);
+            
+            // Animate confetti with delay
+            setTimeout(() => {
+                confetti.style.transition = `all ${1 + Math.random() * 3}s ease-out`;
+                confetti.style.transform = `translate(${-100 + Math.random() * 200}px, ${600 + Math.random() * 200}px) rotate(${360 + Math.random() * 720}deg)`;
+                confetti.style.opacity = '1';
+                
+                setTimeout(() => {
+                    confetti.style.opacity = '0';
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 1000);
+                }, 1000 + Math.random() * 1000);
+            }, delay);
+        }
+        
+        // Reset the scene
+        function resetScene() {
+            // Reset stress level
+            stressLevel = 100;
+            updateStressMeter();
+            
+            // Clear speech bubbles
+            document.querySelectorAll('.speech-bubble').forEach(bubble => {
+                bubble.classList.remove('show');
+            });
+            
+            // Remove all projectiles, waves, and emojis
+            document.querySelectorAll('.projectile, .sound-wave, .emoji-reaction').forEach(el => {
+                el.remove();
+            });
+            
+            // Reset character animations
+            document.querySelectorAll('.character').forEach(char => {
+                char.className = 'character pulse';
+                char.style.animation = '';
+                char.style.filter = '';
+            });
+            
+            // Deselect tools
+            currentTool = null;
+            document.querySelectorAll('.tool').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Clear confetti
+            document.getElementById('confetti-container').innerHTML = '';
+            
+            // Show message
+            showMessage('场景已重置，可以继续发泄！');
+            
+            // Reset animation lock
+            animationInProgress = false;
+        }
+    </script>
+</body>
+</html>
