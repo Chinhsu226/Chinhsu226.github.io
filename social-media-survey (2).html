@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社交媒体使用习惯调研</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --theme-bg: #f5f3f0;
+            --theme-card: #ffffff;
+            --theme-text: #2c2b2a;
+            --theme-primary: #8c7e6d;
+            --theme-accent: #d3c9c0;
+        }
+
+        body {
+            background-color: var(--theme-bg);
+            color: var(--theme-text);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .card {
+            background-color: var(--theme-card);
+            transition: background-color 0.3s;
+        }
+
+        .theme-btn {
+            border: 2px solid var(--theme-primary);
+            color: var(--theme-primary);
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-btn:hover {
+            background-color: var(--theme-primary);
+            color: var(--theme-card);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-btn.active {
+            background-color: var(--theme-primary);
+            color: var(--theme-card);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .submit-btn {
+            background-color: var(--theme-primary);
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 0.5rem;
+            accent-color: var(--theme-primary);
+        }
+
+        .radio-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .radio-container input[type="radio"] {
+            margin-right: 0.5rem;
+            accent-color: var(--theme-primary);
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            resize: vertical;
+            min-height: 100px;
+            background-color: var(--theme-card);
+            color: var(--theme-text);
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--theme-primary);
+            box-shadow: 0 0 0 3px var(--theme-accent), 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 添加卡片悬停效果 */
+        .card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .card:hover {
+            border-left: 4px solid var(--theme-accent);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body style="background-color: var(--theme-bg); color: var(--theme-text);">
+    <div class="max-w-xl mx-auto space-y-6 pt-12 pb-20 px-4">
+        <div class="flex justify-center space-x-2 mb-8 flex-wrap">
+            <button class="theme-btn rounded-full px-4 py-1 text-sm font-medium active" data-theme="ivory">Ivory Silence</button>
+            <button class="theme-btn rounded-full px-4 py-1 text-sm font-medium" data-theme="stone">Stone Forest</button>
+            <button class="theme-btn rounded-full px-4 py-1 text-sm font-medium" data-theme="clay">Warm Clay</button>
+            <button class="theme-btn rounded-full px-4 py-1 text-sm font-medium" data-theme="emerald">Emerald Mist</button>
+            <button class="theme-btn rounded-full px-4 py-1 text-sm font-medium" data-theme="night">Night Pulse</button>
+        </div>
+
+        <h1 class="text-3xl font-bold text-center text-[var(--theme-text)]">聊聊你的社交习惯 📱</h1>
+        <p class="text-base text-center text-gray-500 max-w-md mx-auto">告诉我们你每天都在刷什么，以及喜欢它的理由。</p>
+        <p class="text-sm text-gray-400 text-center mt-2">仅需1分钟完成</p>
+
+        <form id="surveyForm">
+            <div class="card bg-white rounded-xl shadow p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">1. 你最常使用以下哪些平台？（可多选）</h2>
+                <div class="space-y-2">
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-wechat" name="platforms" value="微信">
+                        <label for="platform-wechat">微信</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-weibo" name="platforms" value="微博">
+                        <label for="platform-weibo">微博</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-xiaohongshu" name="platforms" value="小红书">
+                        <label for="platform-xiaohongshu">小红书</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-douyin" name="platforms" value="抖音">
+                        <label for="platform-douyin">抖音</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-zhihu" name="platforms" value="知乎">
+                        <label for="platform-zhihu">知乎</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="platform-other" name="platforms" value="其他">
+                        <label for="platform-other">其他</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-white rounded-xl shadow p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">2. 你每天使用社交媒体的平均时长？（单选）</h2>
+                <div class="space-y-2">
+                    <div class="radio-container">
+                        <input type="radio" id="duration-1" name="duration" value="小于1小时">
+                        <label for="duration-1">小于1小时</label>
+                    </div>
+                    <div class="radio-container">
+                        <input type="radio" id="duration-2" name="duration" value="1-2小时">
+                        <label for="duration-2">1-2小时</label>
+                    </div>
+                    <div class="radio-container">
+                        <input type="radio" id="duration-3" name="duration" value="2-4小时">
+                        <label for="duration-3">2-4小时</label>
+                    </div>
+                    <div class="radio-container">
+                        <input type="radio" id="duration-4" name="duration" value="4小时以上">
+                        <label for="duration-4">4小时以上</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-white rounded-xl shadow p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">3. 你最喜欢的平台是哪个？为什么？（简答题）</h2>
+                <textarea id="favorite-platform" name="favoritePlatform" placeholder="请输入您的回答..."></textarea>
+            </div>
+
+            <div class="flex justify-center mt-8">
+                <button type="submit" class="submit-btn rounded-full px-6 py-2 font-medium">提交</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // 主题切换功能
+        const themes = {
+            ivory: {
+                bg: '#f5f3f0',
+                card: '#ffffff',
+                text: '#2c2b2a',
+                primary: '#8c7e6d',
+                accent: '#d3c9c0'
+            },
+            stone: {
+                bg: '#ecf0f1',
+                card: '#ffffff',
+                text: '#2d3436',
+                primary: '#5d6d7e',
+                accent: '#95a5a6'
+            },
+            clay: {
+                bg: '#faf0e6',
+                card: '#ffffff',
+                text: '#5d4037',
+                primary: '#a1887f',
+                accent: '#d7ccc8'
+            },
+            emerald: {
+                bg: '#e8f5e9',
+                card: '#ffffff',
+                text: '#1b5e20',
+                primary: '#2e7d32',
+                accent: '#81c784'
+            },
+            night: {
+                bg: '#121212',
+                card: '#1e1e1e',
+                text: '#f5f5f5',
+                primary: '#bb86fc',
+                accent: '#03dac6'
+            }
+        };
+
+        // 获取所有主题按钮
+        const themeButtons = document.querySelectorAll('.theme-btn');
+
+        // 为每个按钮添加点击事件
+        themeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const theme = button.getAttribute('data-theme');
+                applyTheme(theme);
+                
+                // 更新按钮激活状态
+                themeButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            });
+        });
+
+        // 应用主题函数
+        function applyTheme(themeName) {
+            const theme = themes[themeName];
+            document.documentElement.style.setProperty('--theme-bg', theme.bg);
+            document.documentElement.style.setProperty('--theme-card', theme.card);
+            document.documentElement.style.setProperty('--theme-text', theme.text);
+            document.documentElement.style.setProperty('--theme-primary', theme.primary);
+            document.documentElement.style.setProperty('--theme-accent', theme.accent);
+        }
+
+        // 表单提交处理
+        const form = document.getElementById('surveyForm');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // 收集多选题答案
+            const platformCheckboxes = document.querySelectorAll('input[name="platforms"]:checked');
+            const platforms = Array.from(platformCheckboxes).map(cb => cb.value);
+            
+            // 收集单选题答案
+            const durationRadio = document.querySelector('input[name="duration"]:checked');
+            const duration = durationRadio ? durationRadio.value : null;
+            
+            // 收集文本输入
+            const favoritePlatform = document.getElementById('favorite-platform').value;
+            
+            // 创建结果对象
+            const result = {
+                platforms: platforms,
+                duration: duration,
+                favoritePlatform: favoritePlatform
+            };
+            
+            // 将结果打印到控制台
+            console.log(JSON.stringify(result, null, 2));
+            
+            // 可选：显示提交成功消息
+            alert('问卷提交成功！');
+        });
+    </script>
+</body>
+</html>
