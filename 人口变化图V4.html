@@ -1,0 +1,1131 @@
+<!DOCTYPE html><html lang="zh-CN" class="light"><head><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市人口动态条形图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+    <style>
+        /* 确保图表区域有足够的高度 */
+        .chart-container {
+            min-height: 600px;
+            overflow: visible !important;
+        }
+        
+        /* 改进的条形动画过渡效果 */
+        .bar-item {
+            transition: 
+                opacity 0.5s cubic-bezier(0.2, 0, 0, 1), 
+                transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性动画曲线 */
+            display: flex;
+            align-items: center;
+            height: 3.5rem;
+            width: 100%;
+            margin-bottom: 0.5rem; /* 增加条形之间的间距 */
+            position: absolute;
+            left: 0;
+            box-sizing: border-box;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .bar-item .bar {
+            transition: 
+                width var(--bar-transition-duration, 0.8s) cubic-bezier(0.34, 1.3, 0.64, 1), /* 添加轻微过冲效果 */
+                opacity 0.3s ease,
+                transform 0.3s ease,
+                box-shadow 0.3s ease;
+            opacity: 0.85;
+            transform-origin: left center;
+        }
+
+        .bar-item:hover {
+            z-index: 10; /* 确保悬停时在顶层 */
+        }
+
+        .bar-item:hover .bar {
+            opacity: 1;
+            transform: scaleY(1.05); /* 轻微放大效果 */
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        }
+        
+        .bar-item:hover .country-name {
+            font-weight: 600;
+            color: #2563eb;
+        }
+        
+        /* 优化的数值标签样式与过渡 */
+        .bar-item .value-label {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: 
+                left var(--bar-transition-duration, 0.8s) cubic-bezier(0.34, 1.3, 0.64, 1),
+                color 0.3s ease,
+                font-weight 0.3s ease;
+            white-space: nowrap;
+            padding: 0 4px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        
+        .bar-item:hover .value-label {
+            font-weight: 600;
+        }
+
+        /* 滑块样式优化 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 5px;
+            background: #e5e7eb;
+            outline: none;
+            transition: background 0.3s;
+        }
+        
+        .dark input[type="range"] {
+            background: #3f3f46;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2563eb;
+            transform: scale(1.1);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            background: #2563eb;
+            transform: scale(1.1);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
+        /* 筛选按钮样式优化 */
+        .filter-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .filter-btn.active {
+            font-weight: bold;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        
+        .filter-btn:hover:not(.active) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 条形图容器 */
+        #barChart {
+            position: relative;
+            width: 100%;
+            min-height: 600px;
+            margin-bottom: 2rem; /* 添加底部间距 */
+        }
+
+        /* Timeline指示器优化 */
+        #timeline #currentIndicator {
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: breathe 3s infinite;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        
+        @keyframes breathe {
+            0% { transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+            50% { transform: scale(1.15); box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+            100% { transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+        }
+        
+        /* 数字滚动动画 */
+        .number-animation {
+            display: inline-block;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        
+        .number-animation.changing {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        
+        /* 控制按钮悬浮效果 */
+        .control-button {
+            transition: all 0.3s ease;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 640px) {
+            .bar-item {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+                height: 3rem;
+            }
+            
+            #currentYearDisplay {
+                font-size: 2rem;
+            }
+            
+            .filter-btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+            
+            .bar-item .country-name {
+                font-size: 0.875rem;
+            }
+            
+            .bar-item .value-label {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-gray-900 dark:text-white transition-colors duration-300">
+    <!-- 顶部控制栏 -->
+    <header class="container mx-auto px-4 py-6 md:px-6">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">城市人口动态条形图</h1>
+            <div class="flex flex-wrap items-center gap-3 md:gap-4">
+                <button id="playPauseBtn" class="control-button bg-gray-200 dark:bg-zinc-700 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-zinc-600 transition text-gray-800 dark:text-white flex items-center">
+                    <span id="playIcon">▶ 播放</span>
+                    <span id="pauseIcon" class="hidden">⏸ 暂停</span>
+                </button>
+                <div class="flex items-center">
+                    <span class="text-gray-700 dark:text-gray-300 mr-2">速度:</span>
+                    <select id="speedControl" class="bg-gray-200 dark:bg-zinc-700 px-2 py-1 rounded-md text-gray-800 dark:text-white">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected="">1x</option>
+                        <option value="2">2x</option>
+                        <option value="4">4x</option>
+                    </select>
+                </div>
+                <button id="themeToggle" class="control-button bg-gray-200 dark:bg-zinc-700 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-zinc-600 transition text-gray-800 dark:text-white">
+                    <span id="lightIcon" class="hidden">☀️</span>
+                    <span id="darkIcon">🌙</span>
+                </button>
+            </div>
+        </div>
+        <div class="mt-6 relative">
+            <div class="flex items-center justify-between">
+                <div class="flex items-baseline">
+                    <span id="currentYearDisplay" class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">1960</span>
+                    <span class="ml-2 text-lg text-gray-600 dark:text-gray-400">年</span>
+                </div>
+                <div id="totalPopulationContainer" class="flex flex-col items-end">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">当前年份城市总人口</span>
+                    <span id="totalPopulation" class="text-xl font-semibold text-gray-700 dark:text-gray-300">0</span>
+                </div>
+            </div>
+            
+            <input type="range" id="yearSlider" min="0" max="56" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer mt-8">
+            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-1 w-full overflow-hidden">
+                <span>1960</span>
+                <span class="hidden md:inline">1970</span>
+                <span>1980</span>
+                <span class="hidden md:inline">1990</span>
+                <span>2000</span>
+                <span class="hidden md:inline">2010</span>
+                <span>2016</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 过滤器 -->
+    <div class="container mx-auto px-4 mt-4">
+        <div id="continentFilter" class="flex flex-wrap gap-2 justify-center">
+            <button class="filter-btn bg-gray-200 dark:bg-zinc-700 px-3 py-1 rounded-md text-gray-800 dark:text-white text-sm hover:bg-gray-300 dark:hover:bg-zinc-600 transition active" data-continent="all">所有地区</button>
+            <button class="filter-btn bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-md text-blue-800 dark:text-blue-200 text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition" data-continent="亚洲">亚洲</button>
+            <button class="filter-btn bg-purple-100 dark:bg-purple-900 px-3 py-1 rounded-md text-purple-800 dark:text-purple-200 text-sm hover:bg-purple-200 dark:hover:bg-purple-800 transition" data-continent="欧洲">欧洲</button>
+            <button class="filter-btn bg-orange-100 dark:bg-orange-900 px-3 py-1 rounded-md text-orange-800 dark:text-orange-200 text-sm hover:bg-orange-200 dark:hover:bg-orange-800 transition" data-continent="北美洲">北美洲</button>
+            <button class="filter-btn bg-yellow-100 dark:bg-yellow-900 px-3 py-1 rounded-md text-yellow-800 dark:text-yellow-200 text-sm hover:bg-yellow-200 dark:hover:bg-yellow-800 transition" data-continent="南美洲">南美洲</button>
+            <button class="filter-btn bg-green-100 dark:bg-green-900 px-3 py-1 rounded-md text-green-800 dark:text-green-200 text-sm hover:bg-green-200 dark:hover:bg-green-800 transition" data-continent="非洲">非洲</button>
+            <button class="filter-btn bg-pink-100 dark:bg-pink-900 px-3 py-1 rounded-md text-pink-800 dark:text-pink-200 text-sm hover:bg-pink-200 dark:hover:bg-pink-800 transition" data-continent="大洋洲">大洋洲</button>
+        </div>
+    </div>
+
+    <!-- 主体图表区 -->
+    <main class="container mx-auto px-4 py-6">
+        <div class="chart-container">
+            <!-- barChart now uses absolute positioning for children -->
+            <div id="barChart" class="w-full">
+                <!-- 图表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部时间轴 -->
+    <footer class="container mx-auto px-4 py-6 mt-4">
+        <div class="flex justify-center">
+            <div id="timeline" class="w-full h-12 flex items-center relative">
+                <!-- 时间点和指示器将通过JavaScript动态生成 -->
+            </div>
+        </div>
+        <div class="text-center mt-8 text-sm text-gray-600 dark:text-gray-400">
+            <p>数据范围: 1960-2016 | 城市人口动态可视化</p>
+            <p class="mt-2 text-xs">使用键盘快捷键: 空格(播放/暂停), 左右箭头(前后调整年份)</p>
+        </div>
+    </footer>
+
+    <script>
+        // 示例数据 - 包含15个主要国家的城市人口数据（1960-2016）
+        const populationData = [];
+        const startYear = 1960;
+        const endYear = 2016;
+        const totalYears = endYear - startYear + 1;
+
+        // Initial 1960 data - 调整初始数据，让国家之间差异更明显
+        let currentYearData = [
+            { name: "中国", population: 109420000, continent: "亚洲", flag: "🇨🇳" },
+            { name: "印度", population: 78920000, continent: "亚洲", flag: "🇮🇳" },
+            { name: "美国", population: 125268000, continent: "北美洲", flag: "🇺🇸" },
+            { name: "日本", population: 59677000, continent: "亚洲", flag: "🇯🇵" },
+            { name: "印尼", population: 14670000, continent: "亚洲", flag: "🇮🇩" },
+            { name: "巴西", population: 31303000, continent: "南美洲", flag: "🇧🇷" },
+            { name: "俄罗斯", population: 61940000, continent: "欧洲", flag: "🇷🇺" },
+            { name: "墨西哥", population: 18469000, continent: "北美洲", flag: "🇲🇽" },
+            { name: "德国", population: 53049000, continent: "欧洲", flag: "🇩🇪" },
+            { name: "英国", population: 43765000, continent: "欧洲", flag: "🇬🇧" },
+            { name: "法国", population: 34730000, continent: "欧洲", flag: "🇫🇷" },
+            { name: "意大利", population: 30340000, continent: "欧洲", flag: "🇮🇹" },
+            { name: "韩国", population: 12550000, continent: "亚洲", flag: "🇰🇷" },
+            { name: "南非", population: 10220000, continent: "非洲", flag: "🇿🇦" },
+            { name: "澳大利亚", population: 8630000, continent: "大洋洲", flag: "🇦🇺" }
+        ];
+        
+        // 初始排序
+        currentYearData.sort((a, b) => b.population - a.population);
+        populationData.push({ year: startYear, countries: currentYearData });
+
+        // Generate data for subsequent years (1961-2016)
+        for (let i = 1; i < totalYears; i++) {
+            const year = startYear + i;
+            const previousYearData = populationData[i - 1].countries;
+
+            const newCountries = previousYearData.map(country => {
+                let growthRate = 0;
+
+                // Different growth rates based on year and continent
+                if (year < 1980) {
+                    if (country.name === "中国") growthRate = 0.035 + Math.random() * 0.02;
+                    else if (country.name === "印度") growthRate = 0.033 + Math.random() * 0.015;
+                    else if (country.continent === "亚洲") growthRate = 0.03 + Math.random() * 0.01;
+                    else if (country.continent === "欧洲") growthRate = 0.01 + Math.random() * 0.005;
+                    else if (country.continent === "非洲") growthRate = 0.038 + Math.random() * 0.01;
+                    else if (country.continent === "大洋洲") growthRate = 0.02 + Math.random() * 0.01;
+                    else growthRate = 0.02 + Math.random() * 0.01;
+                } else if (year < 2000) {
+                    if (country.name === "中国") growthRate = 0.045 + Math.random() * 0.02;
+                    else if (country.name === "印度") growthRate = 0.04 + Math.random() * 0.015;
+                    else if (country.continent === "亚洲") growthRate = 0.035 + Math.random() * 0.01;
+                    else if (country.continent === "欧洲") growthRate = 0.008 + Math.random() * 0.004;
+                    else if (country.continent === "非洲") growthRate = 0.042 + Math.random() * 0.015;
+                    else if (country.continent === "大洋洲") growthRate = 0.018 + Math.random() * 0.008;
+                    else growthRate = 0.025 + Math.random() * 0.01;
+                } else {
+                    if (country.name === "中国") growthRate = 0.04 + Math.random() * 0.015;
+                    else if (country.name === "印度") growthRate = 0.043 + Math.random() * 0.015;
+                    else if (country.continent === "亚洲") growthRate = 0.03 + Math.random() * 0.01;
+                    else if (country.continent === "欧洲") growthRate = 0.005 + Math.random() * 0.003;
+                    else if (country.continent === "非洲") growthRate = 0.045 + Math.random() * 0.015;
+                    else if (country.continent === "大洋洲") growthRate = 0.015 + Math.random() * 0.005;
+                    else growthRate = 0.018 + Math.random() * 0.008;
+                }
+
+                // Apply growth rate (add some randomness)
+                const newPopulation = Math.round(country.population * (1 + growthRate * (0.9 + Math.random() * 0.2))); // Add slight yearly variance
+
+                return {
+                    ...country,
+                    population: newPopulation < 0 ? 0 : newPopulation // Ensure non-negative population
+                };
+            });
+
+            // Sort by population for the *final* state of the year
+            newCountries.sort((a, b) => b.population - a.population);
+
+            populationData.push({
+                year,
+                countries: newCountries
+            });
+        }
+
+        // Define continent gradient colors (light and dark mode)
+        const continentGradients = {
+            "亚洲": "from-blue-500 to-blue-400",
+            "欧洲": "from-purple-500 to-purple-400",
+            "北美洲": "from-orange-500 to-orange-400",
+            "南美洲": "from-yellow-500 to-yellow-400",
+            "非洲": "from-green-500 to-green-400",
+            "大洋洲": "from-pink-500 to-pink-400"
+        };
+
+        const continentGradientsDark = {
+            "亚洲": "from-blue-600 to-blue-500",
+            "欧洲": "from-purple-600 to-purple-500",
+            "北美洲": "from-orange-600 to-orange-500",
+            "南美洲": "from-yellow-600 to-yellow-500",
+            "非洲": "from-green-600 to-green-500",
+            "大洋洲": "from-pink-600 to-pink-500"
+        };
+
+        // 平滑步进插值函数
+        function smoothStep(edge0, edge1, x) {
+            x = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+            return x * x * (3 - 2 * x);
+        }
+
+        // 线性插值
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        // 平滑数字动画
+        function animateNumber(element, start, end, duration = 1000) {
+            const startTime = performance.now();
+            
+            // 添加数字变化类
+            element.classList.add('changing');
+            
+            setTimeout(() => {
+                element.classList.remove('changing');
+                
+                // 动画函数
+                function updateNumber(timestamp) {
+                    const elapsed = timestamp - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easedProgress = smoothStep(0, 1, progress);
+                    
+                    const current = Math.round(lerp(start, end, easedProgress));
+                    element.textContent = formatLargePopulation(current);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(updateNumber);
+                    }
+                }
+                
+                requestAnimationFrame(updateNumber);
+            }, 300); // 等待离开动画完成
+        }
+
+        // Variables for animation state
+        let animationFrameId = null;
+        let isPlaying = false;
+        let animationSpeed = 1; // Multiplier for animation duration
+        let animationDurationPerYear = 1500; // Milliseconds per year transition
+        let startTime = null; // Timestamp when the current year transition started
+        let currentYearIndex = 0; // Index of the year *before* the current transition
+        let selectedContinent = 'all'; // Default filter
+        
+        // 用于缓存前一状态的变量
+        let previousTotalPopulation = 0;
+        
+        // 定义更大更一致的条形间距
+        const BAR_HEIGHT = 56; // 每个条形的高度 (px)
+        const BAR_MARGIN = 16; // 条形之间的间距 (px)
+        const TOTAL_BAR_HEIGHT = BAR_HEIGHT + BAR_MARGIN;
+
+        // Store bar elements for efficient updates
+        const barElements = new Map(); // Map<countryName, barElement>
+
+        // DOM elements
+        const barChart = document.getElementById('barChart');
+        const yearSlider = document.getElementById('yearSlider');
+        const currentYearDisplay = document.getElementById('currentYearDisplay');
+        const totalPopulation = document.getElementById('totalPopulation');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const speedControl = document.getElementById('speedControl');
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+        const timeline = document.getElementById('timeline');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+
+        // Pre-calculate max population and total populations for data analysis
+        let maxPopulation = 0;
+        let totalPopulationsByYear = [];
+        let maxTotalPopulation = 0;
+
+        populationData.forEach(yearData => {
+            let total = 0;
+            yearData.countries.forEach(country => {
+                if (country.population > maxPopulation) {
+                    maxPopulation = country.population;
+                }
+                total += country.population;
+            });
+            totalPopulationsByYear.push(total);
+            if (total > maxTotalPopulation) {
+                maxTotalPopulation = total;
+            }
+        });
+
+        // Format population numbers professionally
+        const numberFormatter = new Intl.NumberFormat('zh-CN', {
+            notation: 'compact',
+            compactDisplay: 'short',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+
+        // Format large population numbers with units (e.g., 1.23亿)
+        function formatLargePopulation(population) {
+            if (population >= 100000000) {
+                return (population / 100000000).toFixed(2) + '亿';
+            } else if (population >= 10000) {
+                return (population / 10000).toFixed(2) + '万';
+            }
+            return numberFormatter.format(population);
+        }
+
+        // Interpolate data between two years
+        function getInterpolatedData(yearIndexA, yearIndexB, progress) {
+            const dataA = populationData[yearIndexA];
+            const dataB = populationData[yearIndexB];
+
+            // Create maps for quick lookup
+            const countriesA = new Map(dataA.countries.map(c => [c.name, c]));
+            const countriesB = new Map(dataB.countries.map(c => [c.name, c]));
+
+            // Get all unique country names from both years
+            const allCountryNames = new Set([...countriesA.keys(), ...countriesB.keys()]);
+
+            const interpolatedCountries = [];
+            let interpolatedTotalPop = 0;
+
+            allCountryNames.forEach(name => {
+                const countryA = countriesA.get(name);
+                const countryB = countriesB.get(name);
+
+                const popA = countryA ? countryA.population : 0;
+                const popB = countryB ? countryB.population : 0;
+
+                const interpolatedPop = lerp(popA, popB, progress);
+
+                // Find the country data (prefer dataB for metadata like flag, continent)
+                const countryData = countryB || countryA;
+
+                if (countryData) { // Should always be true based on how allCountryNames is built
+                    interpolatedCountries.push({
+                        name: name,
+                        population: interpolatedPop,
+                        continent: countryData.continent,
+                        flag: countryData.flag
+                    });
+                    interpolatedTotalPop += interpolatedPop;
+                }
+            });
+
+            // Sort by interpolated population for the current frame
+            interpolatedCountries.sort((a, b) => b.population - a.population);
+
+            return {
+                year: lerp(dataA.year, dataB.year, progress),
+                countries: interpolatedCountries,
+                totalPopulation: interpolatedTotalPop
+            };
+        }
+
+        // 完全清除图表内容
+        function clearChart() {
+            // 移除所有条形元素
+            barElements.forEach(element => {
+                if (element.parentElement === barChart) {
+                    barChart.removeChild(element);
+                }
+            });
+            // 清空存储的引用
+            barElements.clear();
+            
+            // 移除任何其他消息元素
+            const noDataMsg = barChart.querySelector('.no-data-msg');
+            if (noDataMsg) {
+                barChart.removeChild(noDataMsg);
+            }
+        }
+
+        // Update the chart display based on interpolated data
+        function updateChartDisplay(interpolatedData) {
+            const { year, countries, totalPopulation: currentTotalPop } = interpolatedData;
+
+            // Apply continent filter
+            const filteredCountries = selectedContinent === 'all'
+                ? countries
+                : countries.filter(country => country.continent === selectedContinent);
+
+            // 计算图表高度 - 确保有足够空间显示所有条形
+            const barCount = filteredCountries.length;
+            const chartHeight = Math.max(600, barCount * TOTAL_BAR_HEIGHT + 40); // 添加额外空间
+            barChart.style.minHeight = `${chartHeight}px`;
+
+            // 找出不再显示的条形
+            const currentCountryNames = new Set(filteredCountries.map(c => c.name));
+            const toRemove = [];
+            
+            barElements.forEach((element, countryName) => {
+                if (!currentCountryNames.has(countryName)) {
+                    // 标记为需要移除
+                    toRemove.push(countryName);
+                    // 开始淡出动画
+                    element.style.opacity = '0';
+                    element.style.transform = `translateY(${element.offsetTop + 30}px)`;
+                }
+            });
+            
+            // 在动画完成后从DOM移除元素
+            setTimeout(() => {
+                toRemove.forEach(name => {
+                    const element = barElements.get(name);
+                    if (element && element.parentElement === barChart) {
+                        barChart.removeChild(element);
+                        barElements.delete(name);
+                    }
+                });
+            }, 700);
+
+            // 添加或更新条形
+            filteredCountries.forEach((country, index) => {
+                let barRow = barElements.get(country.name);
+
+                if (!barRow) {
+                    // 创建新条形元素
+                    barRow = document.createElement('div');
+                    barRow.className = 'bar-item opacity-0';
+                    barRow.style.transform = `translateY(${chartHeight}px)`;
+                    barRow.style.height = `${BAR_HEIGHT}px`; // 确保明确的高度
+
+                    const isLightMode = !document.documentElement.classList.contains('dark');
+                    const gradientClass = isLightMode
+                        ? `bg-gradient-to-r ${continentGradients[country.continent]}`
+                        : `bg-gradient-to-r ${continentGradientsDark[country.continent]}`;
+
+                    barRow.innerHTML = `
+                        <div class="flex items-center w-[120px] min-w-[120px] pr-4">
+                            <span class="mr-2 text-xl">${country.flag || ''}</span>
+                            <span class="truncate font-medium text-gray-800 dark:text-gray-200 country-name">${country.name}</span>
+                        </div>
+                        <div class="relative flex-grow h-10">
+                            <div class="absolute h-full ${gradientClass} rounded-r-md bar" style="width: 0%;">
+                            </div>
+                            <div class="value-label text-sm font-medium text-gray-700 dark:text-gray-300">
+                                0
+                            </div>
+                        </div>
+                    `;
+                    barChart.appendChild(barRow);
+                    barElements.set(country.name, barRow);
+
+                    // 强制重新布局，确保初始状态正确
+                    void barRow.offsetHeight;
+
+                    // 使用延迟显示条形
+                    setTimeout(() => {
+                        barRow.style.opacity = '1';
+                        barRow.style.transform = `translateY(${index * TOTAL_BAR_HEIGHT}px)`;
+                    }, index * 20);
+                }
+
+                // 更新条形宽度和标签内容
+                const barInner = barRow.querySelector('.bar');
+                const valueLabel = barRow.querySelector('.value-label');
+                const percentage = (country.population / maxPopulation) * 100;
+
+                // 设置过渡时间 CSS 变量
+                const currentWidth = parseFloat(barInner.style.width) || 0;
+                const widthChange = Math.abs(percentage - currentWidth);
+                const transitionDuration = 0.4 + (widthChange / 100) * 0.6;
+                barRow.style.setProperty('--bar-transition-duration', `${transitionDuration}s`);
+
+                // 更新条形宽度
+                barInner.style.width = `${percentage}%`;
+                valueLabel.textContent = formatLargePopulation(Math.round(country.population));
+
+                // 智能标签定位
+                if (percentage > 30) { // 较长条形
+                    valueLabel.style.left = `calc(${percentage * 0.85}% - 5px)`;
+                    valueLabel.style.color = 'white';
+                    valueLabel.style.textShadow = '0 0 2px rgba(0,0,0,0.5)';
+                } else if (percentage > 10) { // 中等长度条形
+                    valueLabel.style.left = `calc(${percentage}% + 8px)`;
+                    valueLabel.style.color = '';
+                    valueLabel.style.textShadow = '';
+                } else { // 较短条形
+                    valueLabel.style.left = `calc(${percentage}% + 12px)`;
+                    valueLabel.style.color = '';
+                    valueLabel.style.textShadow = '';
+                }
+
+                // 更新条形垂直位置 - 使用明确的计算
+                barRow.style.transform = `translateY(${index * TOTAL_BAR_HEIGHT}px)`;
+
+                // 更新条形渐变色以匹配当前主题
+                const isLightMode = !document.documentElement.classList.contains('dark');
+                const baseClasses = barInner.className.split(' ')
+                    .filter(c => !c.startsWith('from-') && !c.startsWith('to-')).join(' ');
+                const newGradientClass = isLightMode
+                    ? `bg-gradient-to-r ${continentGradients[country.continent]}`
+                    : `bg-gradient-to-r ${continentGradientsDark[country.continent]}`;
+                barInner.className = `${baseClasses} ${newGradientClass}`;
+            });
+
+            // 处理无数据情况
+            if (filteredCountries.length === 0) {
+                if (!barChart.querySelector('.no-data-msg')) {
+                    const noDataMsg = document.createElement('div');
+                    noDataMsg.className = 'text-center py-10 text-gray-600 dark:text-gray-400 no-data-msg';
+                    noDataMsg.textContent = '没有符合条件的数据';
+                    barChart.appendChild(noDataMsg);
+                }
+            } else {
+                const noDataMsg = barChart.querySelector('.no-data-msg');
+                if (noDataMsg) {
+                    barChart.removeChild(noDataMsg);
+                }
+            }
+
+            // 平滑更新总人口数字
+            if (Math.abs(currentTotalPop - previousTotalPopulation) > 1000000) {
+                animateNumber(totalPopulation, previousTotalPopulation, Math.round(currentTotalPop), 800);
+                previousTotalPopulation = Math.round(currentTotalPop);
+            } else {
+                totalPopulation.textContent = formatLargePopulation(Math.round(currentTotalPop));
+                previousTotalPopulation = Math.round(currentTotalPop);
+            }
+            
+            // 平滑更新年份显示
+            const currentYearInt = Math.round(year);
+            const prevYearText = currentYearDisplay.textContent;
+            if (prevYearText !== currentYearInt.toString()) {
+                currentYearDisplay.classList.add('changing');
+                setTimeout(() => {
+                    currentYearDisplay.textContent = currentYearInt;
+                    currentYearDisplay.classList.remove('changing');
+                }, 300);
+            }
+
+            // 更新时间轴指示器位置
+            const overallProgress = (year - startYear) / (endYear - startYear);
+            updateTimelineIndicator(overallProgress);
+        }
+        
+        // 跟踪前一年份
+        let previousYearIndex = startYear;
+
+        // Main animation loop
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+
+            const elapsed = timestamp - startTime;
+            const durationPerYear = animationDurationPerYear / animationSpeed;
+            const yearProgress = elapsed / durationPerYear; // Progress within the current year transition (0 to 1)
+
+            let currentOverallYear = currentYearIndex + yearProgress;
+
+            // Handle year completion
+            if (yearProgress >= 1 && currentYearIndex < totalYears - 1) {
+                startTime = timestamp; // Reset start time for the next transition
+                currentYearIndex++; // Move to the next year index
+                currentOverallYear = currentYearIndex; // Ensure year is exact at the transition point
+            }
+
+            // Clamp progress and year index
+            const clampedYearProgress = Math.min(1, yearProgress);
+            const clampedYearIndex = Math.min(totalYears - 1, currentYearIndex);
+
+            // Apply enhanced easing to the progress within the year transition
+            const easedProgress = smoothStep(0, 1, clampedYearProgress);
+
+            // Determine the two years to interpolate between
+            const yearIndexA = clampedYearIndex;
+            const yearIndexB = Math.min(totalYears - 1, clampedYearIndex + 1); // Next year or current year if at the end
+
+            // If we are at the very last year, just show the final state
+            const finalProgress = (yearIndexA === totalYears - 1) ? 1 : easedProgress;
+
+            // Get interpolated data
+            const interpolatedData = getInterpolatedData(yearIndexA, yearIndexB, finalProgress);
+
+            // Update chart display with interpolated data
+            updateChartDisplay(interpolatedData);
+
+            // Update slider position based on overall year progress
+            yearSlider.value = currentOverallYear;
+
+            // Continue animation if playing and not at the last year
+            if (isPlaying && currentYearIndex < totalYears - 1) {
+                animationFrameId = requestAnimationFrame(animate);
+            } else if (currentYearIndex >= totalYears - 1) {
+                // Reached the end, ensure final state is shown and pause
+                updateChartDisplay(getInterpolatedData(totalYears - 1, totalYears - 1, 1)); // Ensure final year data is fully applied
+                yearSlider.value = totalYears - 1;
+                updateTimelineIndicator(1);
+                pauseAnimation();
+            }
+        }
+
+        // Play animation with enhanced effects
+        function playAnimation() {
+            if (!isPlaying) {
+                isPlaying = true;
+                
+                // 播放按钮动画效果
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                
+                // 添加按钮按下效果
+                playPauseBtn.classList.add('scale-95');
+                setTimeout(() => playPauseBtn.classList.remove('scale-95'), 200);
+
+                // 如果当前在最后一年，需要重置到第一年
+                if (currentYearIndex >= totalYears - 1) {
+                    currentYearIndex = 0;
+                    // 清除并重新绘制图表，确保正确的初始状态
+                    clearChart();
+                    updateChartDisplay(getInterpolatedData(0, 0, 0));
+                }
+                
+                // 重置开始时间，确保从当前状态平滑过渡
+                startTime = null;
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        }
+
+        // Pause animation with enhanced effects
+        function pauseAnimation() {
+            isPlaying = false;
+            
+            // 暂停按钮动画效果
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            
+            // 添加按钮按下效果
+            playPauseBtn.classList.add('scale-95');
+            setTimeout(() => playPauseBtn.classList.remove('scale-95'), 200);
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            // 确保显示精确的当前年份数据
+            updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+        }
+
+        // Seek animation to a specific year index with enhanced effects
+        function seekToYear(yearIndex) {
+            // 存储前一个值以用于动画
+            const prevYearIndex = currentYearIndex;
+            
+            // 首先暂停动画
+            pauseAnimation();
+
+            // 更新当前年份索引
+            currentYearIndex = Math.max(0, Math.min(totalYears - 1, Math.floor(yearIndex)));
+
+            // 如果是跳跃式变化，添加微动效果
+            if (Math.abs(prevYearIndex - currentYearIndex) > 5) {
+                clearChart(); // 清除并重建图表，避免重叠
+                barChart.classList.add('scale-98');
+                setTimeout(() => barChart.classList.remove('scale-98'), 300);
+            }
+
+            // 立即更新显示为目标年份的状态
+            updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+
+            // 更新滑块位置
+            yearSlider.value = currentYearIndex;
+
+            // 更新时间轴指示器位置
+            updateTimelineIndicator(currentYearIndex / (totalYears - 1));
+        }
+
+        // Set continent filter with enhanced effects
+        function setContinentFilter(continent) {
+            // 记录之前的过滤器
+            const prevContinent = selectedContinent;
+            selectedContinent = continent;
+
+            // Update filter button styles with enhanced feedback
+            filterButtons.forEach(button => {
+                button.classList.remove('active');
+                if (button.getAttribute('data-continent') === continent) {
+                    button.classList.add('active');
+                    // 添加点击效果
+                    button.classList.add('scale-110');
+                    setTimeout(() => button.classList.remove('scale-110'), 300);
+                }
+            });
+
+            // Pause animation and update the chart for the current year with the new filter
+            pauseAnimation();
+            
+            // 添加微动画效果，仅当切换不同过滤器时
+            if (prevContinent !== continent) {
+                barChart.style.opacity = '0.8';
+                barChart.style.transform = 'scale(0.98)';
+                
+                setTimeout(() => {
+                    barChart.style.opacity = '1';
+                    barChart.style.transform = 'scale(1)';
+                    
+                    // 完全清除图表并重绘
+                    clearChart();
+                    updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+                }, 200);
+            } else {
+                // 立即更新，无动画
+                clearChart();
+                updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+            }
+        }
+
+        // Initialize timeline with enhanced visualization
+        function initTimeline() {
+            timeline.innerHTML = '';
+            const baseDiv = document.createElement('div');
+            baseDiv.className = 'absolute bottom-0 w-full h-1 bg-gray-300 dark:bg-zinc-700';
+            timeline.appendChild(baseDiv);
+
+            // Add year markers (e.g., every 10 years)
+            const yearsToShow = [1960, 1970, 1980, 1990, 2000, 2010, 2016];
+            yearsToShow.forEach(year => {
+                const yearIndex = year - startYear;
+                if (yearIndex >= 0 && yearIndex < totalYears) {
+                    const position = (yearIndex / (totalYears - 1)) * 100;
+
+                    const marker = document.createElement('div');
+                    marker.className = 'absolute w-1 h-4 bg-gray-500 dark:bg-gray-400 rounded-full -mt-1.5 transition-all duration-300';
+                    marker.style.left = `${position}%`;
+
+                    const yearLabel = document.createElement('div');
+                    yearLabel.className = 'absolute -mt-8 text-xs text-gray-600 dark:text-gray-400 transition-all duration-300';
+                    yearLabel.style.left = `${position}%`;
+                    yearLabel.style.transform = 'translateX(-50%)';
+                    yearLabel.textContent = year.toString();
+
+                    timeline.appendChild(marker);
+                    timeline.appendChild(yearLabel);
+                }
+            });
+
+            // Add click points for major years with enhanced interaction
+            const clickYears = [1960, 1970, 1980, 1990, 2000, 2010, 2016];
+            clickYears.forEach(year => {
+                const yearIndex = year - startYear;
+                if (yearIndex >= 0 && yearIndex < totalYears) {
+                    const position = (yearIndex / (totalYears - 1)) * 100;
+                    const clickPoint = document.createElement('div');
+                    clickPoint.className = 'absolute w-4 h-4 bg-blue-500 rounded-full cursor-pointer -mt-1.5 -ml-2 hover:scale-150 transition-transform z-20 shadow-md';
+                    clickPoint.style.left = `${position}%`;
+                    clickPoint.setAttribute('data-year-index', yearIndex);
+                    clickPoint.title = year.toString();
+
+                    // Enhanced click interaction
+                    clickPoint.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-year-index'));
+                        // Visual feedback on click
+                        this.classList.add('scale-75', 'bg-blue-600');
+                        setTimeout(() => {
+                            this.classList.remove('scale-75', 'bg-blue-600');
+                        }, 300);
+                        seekToYear(index);
+                    });
+                    
+                    // Hover effect for subtle visual feedback
+                    clickPoint.addEventListener('mouseenter', function() {
+                        const yearLabel = document.createElement('div');
+                        yearLabel.className = 'absolute -mt-8 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs text-blue-800 dark:text-blue-200 font-medium tooltip-year z-30';
+                        yearLabel.style.left = '50%';
+                        yearLabel.style.transform = 'translateX(-50%)';
+                        yearLabel.textContent = year.toString();
+                        this.appendChild(yearLabel);
+                    });
+                    
+                    clickPoint.addEventListener('mouseleave', function() {
+                        const tooltip = this.querySelector('.tooltip-year');
+                        if (tooltip) this.removeChild(tooltip);
+                    });
+                    
+                    timeline.appendChild(clickPoint);
+                }
+            });
+
+            // Add current year indicator with breathing animation
+            const currentIndicator = document.createElement('div');
+            currentIndicator.id = 'currentIndicator';
+            currentIndicator.className = 'absolute w-5 h-5 bg-red-500 rounded-full -mt-2 -ml-2.5 z-30 shadow-lg';
+            currentIndicator.style.left = '0%'; // Initial position
+            timeline.appendChild(currentIndicator);
+        }
+
+        // Update timeline indicator position with enhanced transitions
+        function updateTimelineIndicator(overallProgress) {
+            const position = overallProgress * 100;
+            const indicator = document.getElementById('currentIndicator');
+            if (indicator) {
+                // Use smooth transition for indicator movement
+                indicator.style.left = `${position}%`;
+            }
+        }
+
+        // Event listeners with enhanced interactions
+        playPauseBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                pauseAnimation();
+            } else {
+                playAnimation();
+            }
+        });
+
+        yearSlider.addEventListener('input', function() {
+            // When user drags the slider, jump to that year immediately and pause
+            const yearIndex = parseInt(this.value);
+            seekToYear(yearIndex);
+        });
+
+        speedControl.addEventListener('change', function() {
+            animationSpeed = parseFloat(this.value);
+            // Visual feedback for speed change
+            speedControl.classList.add('ring-2', 'ring-blue-500');
+            setTimeout(() => speedControl.classList.remove('ring-2', 'ring-blue-500'), 300);
+            
+            // If playing, restart animation loop with new speed
+            if (isPlaying) {
+                pauseAnimation(); // Pause to cancel current frame
+                playAnimation(); // Play to start new loop with updated speed
+            }
+        });
+
+        themeToggle.addEventListener('click', function() {
+            // Enhanced theme transition
+            document.body.style.transition = 'background-color 0.5s ease, color 0.5s ease';
+            document.documentElement.classList.toggle('dark');
+            lightIcon.classList.toggle('hidden');
+            darkIcon.classList.toggle('hidden');
+            
+            // Add visual feedback
+            themeToggle.classList.add('rotate-180');
+            setTimeout(() => themeToggle.classList.remove('rotate-180'), 500);
+            
+            // Redraw chart to apply new theme colors to gradients
+            updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+        });
+
+        // Enhanced continent filter button interactions
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const continent = this.getAttribute('data-continent');
+                setContinentFilter(continent);
+            });
+            
+            // Add hover effect
+            button.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('active')) {
+                    this.classList.add('scale-105');
+                }
+            });
+            
+            button.addEventListener('mouseleave', function() {
+                this.classList.remove('scale-105');
+            });
+        });
+
+        // Check system dark mode preference on load
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+        }
+
+        // Add keyboard shortcuts with enhanced feedback
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') { // Space key play/pause
+                e.preventDefault();
+                if (isPlaying) {
+                    pauseAnimation();
+                } else {
+                    playAnimation();
+                }
+                
+                // Visual feedback
+                playPauseBtn.classList.add('ring-2', 'ring-blue-500');
+                setTimeout(() => playPauseBtn.classList.remove('ring-2', 'ring-blue-500'), 300);
+            } else if (e.code === 'ArrowRight') { // Right arrow forward one year
+                e.preventDefault();
+                if (currentYearIndex < totalYears - 1) {
+                    seekToYear(currentYearIndex + 1);
+                    yearSlider.classList.add('ring-2', 'ring-blue-500');
+                    setTimeout(() => yearSlider.classList.remove('ring-2', 'ring-blue-500'), 300);
+                }
+            } else if (e.code === 'ArrowLeft') { // Left arrow back one year
+                e.preventDefault();
+                if (currentYearIndex > 0) {
+                    seekToYear(currentYearIndex - 1);
+                    yearSlider.classList.add('ring-2', 'ring-blue-500');
+                    setTimeout(() => yearSlider.classList.remove('ring-2', 'ring-blue-500'), 300);
+                }
+            }
+        });
+
+        // Handle window resize for responsive visualizations
+        window.addEventListener('resize', function() {
+            // 完全重新绘制图表以适应新窗口尺寸
+            clearChart();
+            updateChartDisplay(getInterpolatedData(currentYearIndex, currentYearIndex, 0));
+        });
+
+        // Initial setup with enhanced animations
+        yearSlider.max = totalYears - 1; // Set slider max based on total years
+        
+        // Add initial page load animations
+        document.body.classList.add('opacity-0');
+        
+        setTimeout(() => {
+            document.body.classList.remove('opacity-0');
+            document.body.classList.add('transition-opacity', 'duration-500', 'opacity-100');
+            
+            initTimeline();
+            seekToYear(0); // Initialize chart to the first year and pause
+        }, 100);
+    </script>
+
+
+</body></html>
